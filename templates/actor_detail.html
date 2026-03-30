@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalle del Actor - OSINT Framework</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .technique-badge {
+            cursor: help;
+        }
+        .info-card {
+            border-left: 4px solid #0d6efd;
+        }
+        .ioc-card {
+            border-left: 4px solid #198754;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-search"></i> OSINT Framework
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">Herramientas</a>
+                <a class="nav-link" href="/actors">Actores</a>
+                <a class="nav-link" href="/hash-analysis">Análisis Hash</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <!-- Botón volver -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <a href="/actors" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Volver a Actores
+                </a>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando información del actor...</p>
+        </div>
+
+        <!-- Detalles del actor -->
+        <div id="actorDetail" style="display: none;">
+            <!-- Se llenará con JavaScript -->
+        </div>
+
+        <!-- Mensaje de error -->
+        <div id="errorMessage" class="alert alert-danger" style="display: none;">
+            <!-- Mensajes de error -->
+        </div>
+    </div>
+
+    <script>
+        // Obtener ID del actor de la URL
+        const pathParts = window.location.pathname.split('/');
+        const actorId = pathParts[pathParts.length - 1];
+
+        // Cargar detalles del actor
+        async function loadActorDetail() {
+            try {
+                const response = await fetch(`/api/actor/${actorId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    showError(result.error || 'Error cargando el actor');
+                    return;
+                }
+
+                displayActorDetail(result.data);
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Error de conexión al cargar el actor');
+            }
+        }
+
+        // Mostrar detalles del actor
+        function displayActorDetail(actor) {
+            const container = document.getElementById('actorDetail');
+            const loading = document.getElementById('loading');
+            
+            loading.style.display = 'none';
+            container.style.display = 'block';
+
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-12">
+                        <!-- Header -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-dark text-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h2 class="mb-0">${actor.name}</h2>
+                                    <div>
+                                        <span class="badge bg-warning me-2">${actor.country || 'Desconocido'}</span>
+                                        <span class="badge ${isActorActive(actor) ? 'bg-success' : 'bg-secondary'}">
+                                            ${isActorActive(actor) ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="lead">${actor.description || 'Sin descripción disponible'}</p>
+                            </div>
+                        </div>
+
+                        <!-- Información en columnas -->
+                        <div class="row">
+                            <!-- Columna izquierda - Información básica -->
+                            <div class="col-md-6">
+                                <!-- Aliases -->
+                                ${actor.aliases && actor.aliases.length > 0 ? `
+                                    <div class="card info-card mb-3">
+                                        <div class="card-header">
+                                            <h5><i class="fas fa-tags"></i> Aliases Conocidos</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="d-flex flex-wrap gap-2">
+                                                ${actor.aliases.map(alias => 
+                                                    `<span class="badge bg-secondary fs-6">${alias}</span>`
+                                                ).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+
+                                <!-- Sectores objetivo -->
+                                ${actor.target_industries && actor.target_industries.length > 0 ? `
+                                    <div class="card info-card mb-3">
+                                        <div class="card-header">
+                                            <h5><i class="fas fa-bullseye"></i> Sectores Objetivo</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="d-flex flex-wrap gap-2">
+                                                ${actor.target_industries.map(industry => 
+                                                    `<span class="badge bg-info fs-6">${industry}</span>`
+                                                ).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+
+                                <!-- Información temporal -->
+                                <div class="card info-card mb-3">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-calendar"></i> Cronología</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Primera actividad:</strong> ${actor.first_seen || 'Desconocida'}</p>
+                                        <p><strong>Última actividad:</strong> ${actor.last_seen || 'Desconocida'}</p>
+                                        <p><strong>Estado:</strong> 
+                                            <span class="badge ${isActorActive(actor) ? 'bg-success' : 'bg-secondary'}">
+                                                ${isActorActive(actor) ? 'Actualmente activo' : 'Probablemente inactivo'}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Columna derecha - Técnicas MITRE -->
+                            <div class="col-md-6">
+                                ${actor.mitre_techniques && actor.mitre_techniques.length > 0 ? `
+                                    <div class="card info-card mb-3">
+                                        <div class="card-header">
+                                            <h5><i class="fas fa-crosshairs"></i> Técnicas MITRE ATT&CK</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Técnica</th>
+                                                            <th>Descripción</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        ${actor.mitre_techniques.map(tech => `
+                                                            <tr>
+                                                                <td><code>${tech}</code></td>
+                                                                <td><small>${getMitreTechniqueDescription(tech)}</small></td>
+                                                            </tr>
+                                                        `).join('')}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+
+                                <!-- Hashes relacionados -->
+                                ${actor.related_hashes && actor.related_hashes.length > 0 ? `
+                                    <div class="card ioc-card">
+                                        <div class="card-header">
+                                            <h5><i class="fas fa-fingerprint"></i> Hashes Relacionados</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            ${actor.related_hashes.map(hash => `
+                                                <div class="card mb-2">
+                                                    <div class="card-body py-2">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <strong>${hash.hash_type.toUpperCase()}:</strong>
+                                                                <code class="ms-2 small">${hash.hash}</code>
+                                                            </div>
+                                                            <span class="badge bg-${hash.verdict === 'malicious' ? 'danger' : 'success'}">
+                                                                ${hash.verdict === 'malicious' ? 'Malicioso' : 'Limpio'}
+                                                            </span>
+                                                        </div>
+                                                        ${hash.malware_family ? `
+                                                            <div class="mt-1">
+                                                                <small><strong>Familia:</strong> ${hash.malware_family}</small>
+                                                            </div>
+                                                        ` : ''}
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div class="card">
+                                        <div class="card-body text-center text-muted">
+                                            <i class="fas fa-info-circle"></i>
+                                            <p class="mb-0">No hay hashes relacionados registrados</p>
+                                        </div>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+
+                        <!-- Referencias -->
+                        ${actor.references && actor.references.length > 0 ? `
+                            <div class="card mt-4">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-link"></i> Fuentes y Referencias</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        ${actor.references.map(ref => `
+                                            <a href="${ref}" target="_blank" class="list-group-item list-group-item-action">
+                                                <i class="fas fa-external-link-alt"></i> ${ref}
+                                            </a>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Acciones rápidas -->
+                <div class="card mt-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-rocket"></i> Acciones Rápidas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <a href="/hash-analysis" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-search"></i> Analizar Hash
+                                </a>
+                            </div>
+                            <div class="col-md-4">
+                                <a href="/actors" class="btn btn-outline-secondary w-100">
+                                    <i class="fas fa-users"></i> Ver Todos los Actores
+                                </a>
+                            </div>
+                            <div class="col-md-4">
+                                <button onclick="searchActorIOCs('${actor.name}')" class="btn btn-outline-info w-100">
+                                    <i class="fas fa-download"></i> Buscar IOCs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Funciones auxiliares
+        function isActorActive(actor) {
+            if (!actor.last_seen) return false;
+            const lastSeen = new Date(actor.last_seen);
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+            return lastSeen > sixMonthsAgo;
+        }
+
+        function getMitreTechniqueDescription(techId) {
+            const techniques = {
+                'T1566.001': 'Phishing: Spearphishing Attachment',
+                'T1486': 'Data Encrypted for Impact (Ransomware)',
+                'T1027': 'Obfuscated Files or Information',
+                'T1070.004': 'Indicator Removal: File Deletion',
+                'T1078': 'Valid Accounts',
+                'T1566': 'Phishing',
+                'T1059.003': 'Command and Scripting Interpreter',
+                'T1573': 'Encrypted Channel',
+                'T1021.001': 'Remote Desktop Protocol',
+                'T1055': 'Process Injection',
+                'T1569.002': 'System Services: Service Execution'
+            };
+            return techniques[techId] || 'Técnica MITRE ATT&CK';
+        }
+
+        function showError(message) {
+            const loading = document.getElementById('loading');
+            const errorDiv = document.getElementById('errorMessage');
+            
+            loading.style.display = 'none';
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i> 
+                <strong>Error:</strong> ${message}
+                <br><br>
+                <a href="/actors" class="btn btn-primary">Volver a Actores</a>
+            `;
+        }
+
+        function searchActorIOCs(actorName) {
+            alert(`Búsqueda de IOCs para ${actorName} - Esta función estará disponible en la próxima actualización`);
+        }
+
+        // Cargar detalles cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', loadActorDetail);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1046 @@
+{% extends "base.html" %}
+
+{% block title %}Investigar IOC - OSINT Framework CTI{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===== ESTILOS PROPIOS DEL MÓDULO (sin oscurecer nada) ===== */
+
+/* Badge de tipo de IOC detectado */
+.ioc-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid currentColor;
+}
+
+/* Loading chips de fuentes */
+.source-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.3s;
+}
+.source-chip.loading {
+    border-color: #0d6efd;
+    color: #0d6efd;
+    background: #e7f1ff;
+}
+.source-chip.done {
+    border-color: #198754;
+    color: #198754;
+    background: #d1e7dd;
+}
+.source-chip.error {
+    border-color: #dc3545;
+    color: #dc3545;
+    background: #f8d7da;
+}
+.source-chip.skipped {
+    border-color: #6c757d;
+    color: #6c757d;
+    background: #f8f9fa;
+}
+
+/* Spinner pequeño inline */
+.spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Veredicto banner */
+.verdict-banner {
+    border-radius: 12px;
+    padding: 24px;
+    border: 2px solid;
+}
+.verdict-malicious  { background: #fff5f5; border-color: #dc3545; }
+.verdict-suspicious { background: #fffbf0; border-color: #fd7e14; }
+.verdict-clean      { background: #f0fff4; border-color: #198754; }
+.verdict-unknown    { background: #f8f9fa; border-color: #6c757d; }
+
+/* Tarjetas de fuentes */
+.source-card {
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    transition: box-shadow 0.2s;
+}
+.source-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.source-card .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 10px 10px 0 0;
+    padding: 12px 16px;
+}
+
+/* Badge de severidad en findings */
+.finding-item {
+    border-left: 4px solid;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 0 8px 8px 0;
+    background: white;
+}
+.finding-critical { border-color: #dc3545; background: #fff5f5; }
+.finding-high     { border-color: #fd7e14; background: #fff8f0; }
+.finding-medium   { border-color: #ffc107; background: #fffdf0; }
+.finding-info     { border-color: #0dcaf0; background: #f0fbff; }
+
+/* Barra de detecciones VT */
+.detection-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+    overflow: hidden;
+}
+.detection-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+/* Tags cloud */
+.tag-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    background: #e9ecef;
+    color: #495057;
+    margin: 2px;
+}
+
+/* Historial búsquedas */
+.history-item {
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    font-size: 0.82rem;
+    background: white;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.history-item:hover {
+    background: #e7f1ff;
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+/* Pills de ejemplos */
+.example-pill {
+    cursor: pointer;
+    padding: 4px 12px;
+    border-radius: 16px;
+    border: 1px solid #dee2e6;
+    font-size: 0.8rem;
+    background: white;
+    color: #6c757d;
+    transition: all 0.2s;
+    font-family: monospace;
+}
+.example-pill:hover {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+/* Score circular */
+.confidence-score {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    border: 4px solid;
+    flex-shrink: 0;
+}
+.score-danger  { border-color: #dc3545; color: #dc3545; background: #fff5f5; }
+.score-warning { border-color: #fd7e14; color: #fd7e14; background: #fff8f0; }
+.score-success { border-color: #198754; color: #198754; background: #f0fff4; }
+.score-secondary { border-color: #6c757d; color: #6c757d; background: #f8f9fa; }
+
+/* Tabla de motores VT */
+.engines-table td, .engines-table th {
+    font-size: 0.82rem;
+    padding: 6px 10px;
+}
+
+/* Ports grid Shodan */
+.port-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-family: monospace;
+    background: #e9ecef;
+    color: #495057;
+    margin: 2px;
+}
+.port-badge.open { background: #d1e7dd; color: #155724; }
+
+/* Progress bar confianza */
+.confidence-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: #e9ecef;
+    margin-top: 4px;
+}
+.confidence-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+}
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">Inicio</a></li>
+<li class="breadcrumb-item active">Investigar IOC</li>
+{% endblock %}
+
+{% block content %}
+
+<!-- ===== CABECERA ===== -->
+<div class="row mb-4">
+    <div class="col-lg-8 mx-auto text-center">
+        <h2><i class="fas fa-search-plus me-3 text-primary"></i>Investigar IOC</h2>
+        <p class="text-muted">Consulta automática a VirusTotal, MalwareBazaar, AbuseIPDB y Shodan en paralelo</p>
+    </div>
+</div>
+
+<!-- ===== FORMULARIO DE BÚSQUEDA ===== -->
+<div class="row mb-4">
+    <div class="col-lg-9 mx-auto">
+        <div class="card border-primary" style="border-width: 2px;">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0"><i class="fas fa-crosshairs me-2 text-primary"></i>Indicador a Investigar</h5>
+            </div>
+            <div class="card-body">
+                <!-- Input principal -->
+                <div class="mb-3">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text">
+                            <i class="fas fa-fingerprint text-primary"></i>
+                        </span>
+                        <input type="text" class="form-control" id="iocInput"
+                               placeholder="IP, dominio, hash MD5/SHA256, URL..."
+                               onkeypress="if(event.key==='Enter') investigateIOC()"
+                               oninput="detectIOCType(this.value)">
+                        <button class="btn btn-primary px-4" onclick="investigateIOC()" id="investigateBtn">
+                            <i class="fas fa-search me-2"></i>Investigar
+                        </button>
+                    </div>
+                    <!-- Badge tipo detectado -->
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <small class="text-muted">Tipo detectado:</small>
+                        <span id="iocTypeBadge" class="ioc-type-badge text-secondary" style="border-color:#dee2e6;">
+                            <i class="fas fa-question-circle"></i> Introduce un IOC
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Pills de ejemplos -->
+                <div>
+                    <small class="text-muted me-2">Ejemplos:</small>
+                    <span class="example-pill me-1" onclick="setExample('8.8.8.8')">8.8.8.8</span>
+                    <span class="example-pill me-1" onclick="setExample('malware.bazaar.abuse.ch')">malware.bazaar.abuse.ch</span>
+                    <span class="example-pill me-1" onclick="setExample('44d88612fea8a8f36de82e1278abb02f')">44d88612... (MD5)</span>
+                    <span class="example-pill me-1" onclick="setExample('275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f')">275a021b... (SHA256)</span>
+                    <span class="example-pill" onclick="setExample('https://example.com/malware.exe')">URL</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== HISTORIAL ===== -->
+<div class="row mb-4" id="historySection" style="display:none;">
+    <div class="col-lg-9 mx-auto">
+        <small class="text-muted me-2"><i class="fas fa-history me-1"></i>Búsquedas recientes:</small>
+        <span id="historyContainer"></span>
+    </div>
+</div>
+
+<!-- ===== LOADING ===== -->
+<div class="row mb-4" id="loadingSection" style="display:none;">
+    <div class="col-lg-9 mx-auto">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <p class="text-muted mb-3">Consultando fuentes en paralelo...</p>
+                <!-- Chips de fuentes con estado -->
+                <div class="d-flex justify-content-center flex-wrap gap-2" id="sourceChips">
+                    <span class="source-chip loading" id="chip-vt">
+                        <i class="fas fa-circle-notch spin"></i> VirusTotal
+                    </span>
+                    <span class="source-chip loading" id="chip-mb">
+                        <i class="fas fa-circle-notch spin"></i> MalwareBazaar
+                    </span>
+                    <span class="source-chip loading" id="chip-ab">
+                        <i class="fas fa-circle-notch spin"></i> AbuseIPDB
+                    </span>
+                    <span class="source-chip loading" id="chip-sh">
+                        <i class="fas fa-circle-notch spin"></i> Shodan
+                    </span>
+                </div>
+                <!-- Timer -->
+                <small class="text-muted mt-3 d-block">Tiempo: <span id="elapsedTimer">0</span>s</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== RESULTADOS ===== -->
+<div id="resultsSection" style="display:none;">
+
+    <!-- Veredicto global -->
+    <div class="row mb-4">
+        <div class="col-lg-9 mx-auto">
+            <div id="verdictBanner" class="verdict-banner verdict-unknown">
+                <div class="d-flex align-items-center gap-4">
+                    <!-- Score -->
+                    <div id="confidenceScore" class="confidence-score score-secondary">?</div>
+                    <!-- Texto veredicto -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h4 class="mb-0" id="verdictTitle">—</h4>
+                            <span id="verdictBadge" class="badge bg-secondary">DESCONOCIDO</span>
+                        </div>
+                        <p class="text-muted mb-2" id="verdictSummary">Analizando...</p>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill bg-secondary" id="confidenceFill" style="width:0%"></div>
+                        </div>
+                        <small class="text-muted">Confianza: <span id="confidenceText">0%</span></small>
+                    </div>
+                    <!-- IOC analizado -->
+                    <div class="text-end">
+                        <small class="text-muted d-block">IOC analizado</small>
+                        <code id="analyzedIOC" class="text-dark" style="font-size:0.8rem;word-break:break-all;max-width:200px;display:block;"></code>
+                        <span id="analyzedType" class="badge bg-light text-dark border mt-1"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Findings -->
+    <div class="row mb-4" id="findingsRow" style="display:none;">
+        <div class="col-lg-9 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Hallazgos Detectados</h5>
+                    <span id="findingsCount" class="badge bg-warning text-dark">0</span>
+                </div>
+                <div class="card-body" id="findingsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tags -->
+    <div class="row mb-4" id="tagsRow" style="display:none;">
+        <div class="col-lg-9 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-tags me-2 text-info"></i>Etiquetas</h5>
+                </div>
+                <div class="card-body" id="tagsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TARJETAS POR FUENTE ===== -->
+    <div class="row mb-4">
+        <div class="col-lg-9 mx-auto">
+            <h5 class="mb-3"><i class="fas fa-database me-2 text-secondary"></i>Resultados por Fuente</h5>
+            <div class="row g-3">
+
+                <!-- VirusTotal -->
+                <div class="col-md-6" id="vtCard" style="display:none;">
+                    <div class="source-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="https://www.virustotal.com/favicon.ico" width="18" height="18"
+                                     onerror="this.style.display='none'">
+                                <strong>VirusTotal</strong>
+                            </div>
+                            <span id="vtVerdict" class="badge bg-secondary">—</span>
+                        </div>
+                        <div class="card-body" id="vtBody"></div>
+                        <div class="card-footer bg-transparent border-0">
+                            <a id="vtLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-external-link-alt me-1"></i>Ver en VirusTotal
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MalwareBazaar -->
+                <div class="col-md-6" id="mbCard" style="display:none;">
+                    <div class="source-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-bug text-danger"></i>
+                                <strong>MalwareBazaar</strong>
+                            </div>
+                            <span class="badge bg-danger">MALICIOSO</span>
+                        </div>
+                        <div class="card-body" id="mbBody"></div>
+                        <div class="card-footer bg-transparent border-0">
+                            <a id="mbLink" href="#" target="_blank" class="btn btn-sm btn-outline-danger w-100">
+                                <i class="fas fa-external-link-alt me-1"></i>Ver en MalwareBazaar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AbuseIPDB -->
+                <div class="col-md-6" id="abCard" style="display:none;">
+                    <div class="source-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-shield-alt text-warning"></i>
+                                <strong>AbuseIPDB</strong>
+                            </div>
+                            <span id="abVerdict" class="badge bg-secondary">—</span>
+                        </div>
+                        <div class="card-body" id="abBody"></div>
+                        <div class="card-footer bg-transparent border-0">
+                            <a id="abLink" href="#" target="_blank" class="btn btn-sm btn-outline-warning w-100">
+                                <i class="fas fa-external-link-alt me-1"></i>Ver en AbuseIPDB
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shodan -->
+                <div class="col-md-6" id="shCard" style="display:none;">
+                    <div class="source-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-server text-info"></i>
+                                <strong>Shodan</strong>
+                            </div>
+                            <span id="shPorts" class="badge bg-info text-dark">— puertos</span>
+                        </div>
+                        <div class="card-body" id="shBody"></div>
+                        <div class="card-footer bg-transparent border-0">
+                            <a id="shLink" href="#" target="_blank" class="btn btn-sm btn-outline-info w-100">
+                                <i class="fas fa-external-link-alt me-1"></i>Ver en Shodan
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Sin resultados -->
+    <div class="row mb-4" id="noResultsRow" style="display:none;">
+        <div class="col-lg-9 mx-auto">
+            <div class="alert alert-warning text-center">
+                <i class="fas fa-exclamation-circle fa-2x mb-2 d-block"></i>
+                <strong>Sin resultados</strong><br>
+                No se encontró información sobre este IOC en ninguna fuente. Puede ser legítimo o desconocido.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== ERROR ===== -->
+<div class="row mb-4" id="errorSection" style="display:none;">
+    <div class="col-lg-9 mx-auto">
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Error:</strong> <span id="errorMsg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- ===== INFO MÓDULO ===== -->
+<div class="row mt-5" id="infoSection">
+    <div class="col-lg-9 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2 text-info"></i>Sobre este módulo</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3 text-center">
+                        <div class="p-3 rounded" style="background:rgba(13,110,253,0.08);">
+                            <i class="fas fa-virus fa-2x text-primary mb-2"></i>
+                            <div class="fw-bold">VirusTotal</div>
+                            <small class="text-muted">IP, dominio, URL, hash</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="p-3 rounded" style="background:rgba(220,53,69,0.08);">
+                            <i class="fas fa-bug fa-2x text-danger mb-2"></i>
+                            <div class="fw-bold">MalwareBazaar</div>
+                            <small class="text-muted">Solo hashes</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="p-3 rounded" style="background:rgba(255,193,7,0.08);">
+                            <i class="fas fa-shield-alt fa-2x text-warning mb-2"></i>
+                            <div class="fw-bold">AbuseIPDB</div>
+                            <small class="text-muted">Solo IPs</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="p-3 rounded" style="background:rgba(13,202,240,0.08);">
+                            <i class="fas fa-server fa-2x text-info mb-2"></i>
+                            <div class="fw-bold">Shodan</div>
+                            <small class="text-muted">Solo IPs</small>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-fingerprint me-2 text-muted"></i>IOCs soportados</h6>
+                        <ul class="text-muted small mb-0">
+                            <li>Direcciones IPv4 e IPv6</li>
+                            <li>Dominios y subdominios</li>
+                            <li>URLs completas</li>
+                            <li>Hashes MD5, SHA1, SHA256, SHA512</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-bolt me-2 text-muted"></i>Características</h6>
+                        <ul class="text-muted small mb-0">
+                            <li>Consultas paralelas (~3-5s)</li>
+                            <li>Detección automática de tipo</li>
+                            <li>Correlación multi-fuente</li>
+                            <li>Historial local de búsquedas</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ===================== CONFIGURACIÓN =====================
+const API_BASE = '/api/investigate';
+let timerInterval = null;
+let timerSecs = 0;
+
+// ===================== DETECCIÓN DE TIPO =====================
+const IOC_PATTERNS = {
+    ipv4:   /^(\d{1,3}\.){3}\d{1,3}$/,
+    ipv6:   /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/,
+    md5:    /^[a-fA-F0-9]{32}$/,
+    sha1:   /^[a-fA-F0-9]{40}$/,
+    sha256: /^[a-fA-F0-9]{64}$/,
+    sha512: /^[a-fA-F0-9]{128}$/,
+    url:    /^https?:\/\/.+/i,
+    domain: /^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?)+$/i,
+};
+
+const TYPE_META = {
+    ipv4:   { label: 'IPv4',    icon: 'fa-network-wired', cls: 'text-info'   },
+    ipv6:   { label: 'IPv6',    icon: 'fa-network-wired', cls: 'text-info'   },
+    md5:    { label: 'Hash MD5',    icon: 'fa-hashtag', cls: 'text-warning' },
+    sha1:   { label: 'Hash SHA1',   icon: 'fa-hashtag', cls: 'text-warning' },
+    sha256: { label: 'Hash SHA256', icon: 'fa-hashtag', cls: 'text-warning' },
+    sha512: { label: 'Hash SHA512', icon: 'fa-hashtag', cls: 'text-warning' },
+    url:    { label: 'URL',     icon: 'fa-link',    cls: 'text-primary' },
+    domain: { label: 'Dominio', icon: 'fa-globe',   cls: 'text-success' },
+};
+
+function detectType(value) {
+    value = value.trim();
+    for (const [type, re] of Object.entries(IOC_PATTERNS)) {
+        if (re.test(value)) return type;
+    }
+    return null;
+}
+
+function detectIOCType(value) {
+    const badge = document.getElementById('iocTypeBadge');
+    const type = detectType(value.trim());
+    if (!value.trim()) {
+        badge.innerHTML = '<i class="fas fa-question-circle"></i> Introduce un IOC';
+        badge.className = 'ioc-type-badge text-secondary';
+        badge.style.borderColor = '#dee2e6';
+        return;
+    }
+    if (type) {
+        const m = TYPE_META[type];
+        badge.innerHTML = `<i class="fas ${m.icon}"></i> ${m.label}`;
+        badge.className = `ioc-type-badge ${m.cls}`;
+        badge.style.borderColor = 'currentColor';
+    } else {
+        badge.innerHTML = '<i class="fas fa-question-circle"></i> Tipo no reconocido';
+        badge.className = 'ioc-type-badge text-danger';
+        badge.style.borderColor = '#dc3545';
+    }
+}
+
+function setExample(val) {
+    document.getElementById('iocInput').value = val;
+    detectIOCType(val);
+}
+
+// ===================== INVESTIGAR =====================
+async function investigateIOC() {
+    const input = document.getElementById('iocInput').value.trim();
+    if (!input) { showError('Introduce un IOC para analizar.'); return; }
+
+    const type = detectType(input);
+    if (!type) { showError('Tipo de IOC no reconocido. Introduce una IP, dominio, URL o hash válido.'); return; }
+
+    // Ocultar secciones anteriores
+    hide('resultsSection'); hide('errorSection'); hide('infoSection');
+    show('loadingSection');
+
+    // Resetear chips
+    ['vt','mb','ab','sh'].forEach(s => setChip(s, 'loading'));
+
+    // Timer
+    timerSecs = 0;
+    document.getElementById('elapsedTimer').textContent = '0';
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        timerSecs++;
+        document.getElementById('elapsedTimer').textContent = timerSecs;
+    }, 1000);
+
+    // Simular progreso de chips según tipo
+    setTimeout(() => {
+        if (!['ipv4','ipv6'].includes(type)) {
+            setChip('ab', 'skipped');
+            setChip('sh', 'skipped');
+        }
+        if (!['md5','sha1','sha256','sha512'].includes(type)) {
+            setChip('mb', 'skipped');
+        }
+    }, 300);
+
+    try {
+        const resp = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ioc: input, type: type })
+        });
+
+        clearInterval(timerInterval);
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ error: 'Error del servidor' }));
+            throw new Error(err.error || `HTTP ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        renderResults(data, input, type);
+        saveHistory(input, type, data.verdict);
+
+    } catch (err) {
+        clearInterval(timerInterval);
+        hide('loadingSection');
+        showError(err.message);
+    }
+}
+
+// ===================== RENDERIZAR RESULTADOS =====================
+function renderResults(data, ioc, type) {
+    hide('loadingSection');
+
+    // Marcar chips finales
+    const sources = data.sources || {};
+    setChip('vt', sources.virustotal   ? 'done' : (['ipv4','ipv6','domain','url','md5','sha1','sha256','sha512'].includes(type) ? 'error' : 'skipped'));
+    setChip('mb', sources.malwarebazaar ? 'done' : (['md5','sha1','sha256','sha512'].includes(type) ? 'error' : 'skipped'));
+    setChip('ab', sources.abuseipdb    ? 'done' : (['ipv4','ipv6'].includes(type) ? 'error' : 'skipped'));
+    setChip('sh', sources.shodan       ? 'done' : (['ipv4','ipv6'].includes(type) ? 'error' : 'skipped'));
+
+    // Veredicto
+    const verdict = data.verdict || 'unknown';
+    const confidence = data.confidence_score || 0;
+    renderVerdict(verdict, confidence, data.summary || '', ioc, type);
+
+    // Findings
+    renderFindings(data.findings || []);
+
+    // Tags
+    renderTags(data.tags || []);
+
+    // Fuentes individuales
+    let hasAnyResult = false;
+
+    if (sources.virustotal) {
+        hasAnyResult = true;
+        renderVirusTotal(sources.virustotal, ioc, type);
+    }
+    if (sources.malwarebazaar) {
+        hasAnyResult = true;
+        renderMalwareBazaar(sources.malwarebazaar, ioc);
+    }
+    if (sources.abuseipdb) {
+        hasAnyResult = true;
+        renderAbuseIPDB(sources.abuseipdb, ioc);
+    }
+    if (sources.shodan) {
+        hasAnyResult = true;
+        renderShodan(sources.shodan, ioc);
+    }
+
+    if (!hasAnyResult) show('noResultsRow'); else hide('noResultsRow');
+
+    show('resultsSection');
+    window.scrollTo({ top: document.getElementById('resultsSection').offsetTop - 20, behavior: 'smooth' });
+}
+
+// --- Veredicto banner ---
+function renderVerdict(verdict, confidence, summary, ioc, type) {
+    const banner = document.getElementById('verdictBanner');
+    const title  = document.getElementById('verdictTitle');
+    const badge  = document.getElementById('verdictBadge');
+    const score  = document.getElementById('confidenceScore');
+    const sumEl  = document.getElementById('verdictSummary');
+    const fill   = document.getElementById('confidenceFill');
+    const confTx = document.getElementById('confidenceText');
+    const iocEl  = document.getElementById('analyzedIOC');
+    const typeEl = document.getElementById('analyzedType');
+
+    const MAP = {
+        malicious:  { cls: 'verdict-malicious',  badge: 'bg-danger',   score: 'score-danger',  label: '⚠ MALICIOSO' },
+        suspicious: { cls: 'verdict-suspicious', badge: 'bg-warning text-dark', score: 'score-warning', label: '⚡ SOSPECHOSO' },
+        clean:      { cls: 'verdict-clean',      badge: 'bg-success',  score: 'score-success', label: '✓ LIMPIO'    },
+        unknown:    { cls: 'verdict-unknown',    badge: 'bg-secondary', score: 'score-secondary', label: '? DESCONOCIDO' },
+    };
+    const m = MAP[verdict] || MAP.unknown;
+
+    banner.className = `verdict-banner ${m.cls}`;
+    title.textContent = m.label;
+    badge.className   = `badge ${m.badge}`;
+    badge.textContent = verdict.toUpperCase();
+    score.className   = `confidence-score ${m.score}`;
+    score.textContent = confidence + '%';
+    sumEl.textContent = summary || 'Sin resumen disponible';
+    fill.style.width  = confidence + '%';
+    fill.className    = `confidence-fill ${confidence >= 70 ? 'bg-danger' : confidence >= 40 ? 'bg-warning' : 'bg-success'}`;
+    confTx.textContent = confidence + '%';
+    iocEl.textContent  = ioc;
+    typeEl.textContent = (TYPE_META[type] || { label: type }).label;
+}
+
+// --- Findings ---
+function renderFindings(findings) {
+    const row  = document.getElementById('findingsRow');
+    const list = document.getElementById('findingsList');
+    const cnt  = document.getElementById('findingsCount');
+
+    if (!findings.length) { hide('findingsRow'); return; }
+
+    cnt.textContent = findings.length;
+    list.innerHTML  = findings.map(f => {
+        const sev = f.severity || 'info';
+        const icons = { critical:'fa-skull', high:'fa-radiation', medium:'fa-exclamation-triangle', info:'fa-info-circle' };
+        const colors = { critical:'text-danger', high:'text-warning', medium:'text-warning', info:'text-info' };
+        return `<div class="finding-item finding-${sev}">
+            <div class="d-flex align-items-start gap-2">
+                <i class="fas ${icons[sev]||'fa-circle'} mt-1 ${colors[sev]||'text-muted'}"></i>
+                <div>
+                    <div class="fw-bold small">${esc(f.title || '')}</div>
+                    <div class="text-muted small">${esc(f.description || '')}</div>
+                    ${f.source ? `<span class="badge bg-light text-dark border mt-1">${esc(f.source)}</span>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    show('findingsRow');
+}
+
+// --- Tags ---
+function renderTags(tags) {
+    const row  = document.getElementById('tagsRow');
+    const list = document.getElementById('tagsList');
+    if (!tags.length) { hide('tagsRow'); return; }
+    list.innerHTML = tags.map(t => `<span class="tag-pill">${esc(t)}</span>`).join('');
+    show('tagsRow');
+}
+
+// --- VirusTotal ---
+function renderVirusTotal(vt, ioc, type) {
+    const body = document.getElementById('vtBody');
+    const verdEl = document.getElementById('vtVerdict');
+    const link = document.getElementById('vtLink');
+
+    const stats = vt.stats || {};
+    const mal = stats.malicious || 0;
+    const sus = stats.suspicious || 0;
+    const cln = stats.undetected || stats.harmless || 0;
+    const total = mal + sus + cln + (stats.timeout || 0);
+
+    // Badge veredicto
+    if (mal > 0) { verdEl.className = 'badge bg-danger'; verdEl.textContent = `${mal}/${total} Detecciones`; }
+    else if (sus > 0) { verdEl.className = 'badge bg-warning text-dark'; verdEl.textContent = `${sus} Sospechoso`; }
+    else if (total > 0) { verdEl.className = 'badge bg-success'; verdEl.textContent = 'Limpio'; }
+    else { verdEl.className = 'badge bg-secondary'; verdEl.textContent = 'Sin datos'; }
+
+    // Link VT
+    const encIoc = encodeURIComponent(ioc);
+    const vtBase = 'https://www.virustotal.com/gui';
+    if (['ipv4','ipv6'].includes(type)) link.href = `${vtBase}/ip-address/${ioc}`;
+    else if (type === 'domain') link.href = `${vtBase}/domain/${ioc}`;
+    else if (type === 'url') link.href = `${vtBase}/url/${btoa(ioc).replace(/=/g,'')}`;
+    else link.href = `${vtBase}/file/${ioc}`;
+
+    // Barra de detecciones
+    const pct = total ? Math.round((mal / total) * 100) : 0;
+    const barColor = mal > 0 ? 'bg-danger' : sus > 0 ? 'bg-warning' : 'bg-success';
+
+    let html = `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1">
+                <span class="text-muted">Detecciones</span>
+                <span class="fw-bold">${mal} / ${total} motores</span>
+            </div>
+            <div class="detection-bar">
+                <div class="detection-fill ${barColor}" style="width:${pct}%"></div>
+            </div>
+        </div>`;
+
+    // Reputación / info extra
+    if (vt.reputation !== undefined) {
+        html += `<div class="d-flex justify-content-between small mb-2">
+            <span class="text-muted">Reputación</span>
+            <span class="fw-bold ${vt.reputation < 0 ? 'text-danger' : 'text-success'}">${vt.reputation}</span>
+        </div>`;
+    }
+
+    // Familia de malware
+    if (vt.malware_family) {
+        html += `<div class="d-flex justify-content-between small mb-2">
+            <span class="text-muted">Familia</span>
+            <span class="badge bg-danger">${esc(vt.malware_family)}</span>
+        </div>`;
+    }
+
+    // Detecciones por motor (top 5)
+    const engines = vt.engines || {};
+    const detected = Object.entries(engines).filter(([,v]) => v.category === 'malicious').slice(0, 5);
+    if (detected.length) {
+        html += `<div class="mt-2"><small class="text-muted fw-bold d-block mb-1">Motores que detectan:</small>`;
+        html += detected.map(([eng, v]) =>
+            `<div class="d-flex justify-content-between small mb-1">
+                <span>${esc(eng)}</span>
+                <span class="text-danger">${esc(v.result || 'Malicious')}</span>
+            </div>`
+        ).join('');
+        html += `</div>`;
+    }
+
+    // Fechas
+    if (vt.first_seen) {
+        html += `<div class="mt-2 pt-2 border-top">
+            <small class="text-muted d-block">Primera vez visto: ${formatDate(vt.first_seen)}</small>
+            ${vt.last_seen ? `<small class="text-muted">Último análisis: ${formatDate(vt.last_seen)}</small>` : ''}
+        </div>`;
+    }
+
+    body.innerHTML = html;
+    show('vtCard');
+}
+
+// --- MalwareBazaar ---
+function renderMalwareBazaar(mb, ioc) {
+    const body = document.getElementById('mbBody');
+    const link = document.getElementById('mbLink');
+
+    link.href = `https://bazaar.abuse.ch/sample/${ioc}/`;
+
+    let html = '';
+    if (mb.malware_family) html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Familia</span><span class="badge bg-danger">${esc(mb.malware_family)}</span></div>`;
+    if (mb.file_type)      html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Tipo de archivo</span><span class="fw-bold">${esc(mb.file_type)}</span></div>`;
+    if (mb.file_name)      html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Nombre</span><span class="fw-bold text-truncate" style="max-width:130px">${esc(mb.file_name)}</span></div>`;
+    if (mb.file_size)      html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Tamaño</span><span>${formatSize(mb.file_size)}</span></div>`;
+    if (mb.reporter)       html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Reportado por</span><span>${esc(mb.reporter)}</span></div>`;
+    if (mb.origin_country) html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Origen</span><span>${esc(mb.origin_country)}</span></div>`;
+    if (mb.delivery_method) html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Vector</span><span>${esc(mb.delivery_method)}</span></div>`;
+    if (mb.first_seen)     html += `<div class="mt-2 pt-2 border-top"><small class="text-muted">Primera vez: ${esc(mb.first_seen)}</small></div>`;
+
+    if (!html) html = '<p class="text-muted small">No se obtuvieron detalles adicionales.</p>';
+    body.innerHTML = html;
+    show('mbCard');
+}
+
+// --- AbuseIPDB ---
+function renderAbuseIPDB(ab, ioc) {
+    const body   = document.getElementById('abBody');
+    const verdEl = document.getElementById('abVerdict');
+    const link   = document.getElementById('abLink');
+
+    link.href = `https://www.abuseipdb.com/check/${ioc}`;
+
+    const score = ab.abuse_confidence_score || 0;
+    if (score >= 70) { verdEl.className = 'badge bg-danger'; verdEl.textContent = `${score}% Abuso`; }
+    else if (score >= 30) { verdEl.className = 'badge bg-warning text-dark'; verdEl.textContent = `${score}% Riesgo`; }
+    else { verdEl.className = 'badge bg-success'; verdEl.textContent = `${score}% Limpio`; }
+
+    const barColor = score >= 70 ? 'bg-danger' : score >= 30 ? 'bg-warning' : 'bg-success';
+
+    let html = `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1">
+                <span class="text-muted">Nivel de abuso</span>
+                <span class="fw-bold">${score}%</span>
+            </div>
+            <div class="detection-bar">
+                <div class="detection-fill ${barColor}" style="width:${score}%"></div>
+            </div>
+        </div>`;
+
+    if (ab.isp)            html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">ISP</span><span class="fw-bold text-truncate" style="max-width:130px">${esc(ab.isp)}</span></div>`;
+    if (ab.country_code)   html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">País</span><span>${esc(ab.country_code)}</span></div>`;
+    if (ab.usage_type)     html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Uso</span><span>${esc(ab.usage_type)}</span></div>`;
+    if (ab.total_reports)  html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Total reportes</span><span class="fw-bold">${ab.total_reports}</span></div>`;
+    if (ab.num_distinct_users) html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Usuarios únicos</span><span>${ab.num_distinct_users}</span></div>`;
+
+    const flags = [];
+    if (ab.is_tor)         flags.push('<span class="badge bg-dark me-1">TOR</span>');
+    if (ab.is_vpn)         flags.push('<span class="badge bg-secondary me-1">VPN</span>');
+    if (ab.is_proxy)       flags.push('<span class="badge bg-secondary me-1">Proxy</span>');
+    if (flags.length) html += `<div class="mt-1">${flags.join('')}</div>`;
+
+    body.innerHTML = html;
+    show('abCard');
+}
+
+// --- Shodan ---
+function renderShodan(sh, ioc) {
+    const body   = document.getElementById('shBody');
+    const portsEl = document.getElementById('shPorts');
+    const link   = document.getElementById('shLink');
+
+    link.href = `https://www.shodan.io/host/${ioc}`;
+
+    const ports = sh.ports || [];
+    portsEl.textContent = `${ports.length} puerto${ports.length !== 1 ? 's' : ''}`;
+
+    let html = '';
+
+    if (sh.org)      html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">Organización</span><span class="fw-bold text-truncate" style="max-width:130px">${esc(sh.org)}</span></div>`;
+    if (sh.country_name) html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">País</span><span>${esc(sh.country_name)}</span></div>`;
+    if (sh.os)       html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">SO</span><span>${esc(sh.os)}</span></div>`;
+    if (sh.asn)      html += `<div class="d-flex justify-content-between small mb-2"><span class="text-muted">ASN</span><span class="font-monospace small">${esc(sh.asn)}</span></div>`;
+
+    if (ports.length) {
+        html += `<div class="mt-2"><small class="text-muted fw-bold d-block mb-1">Puertos abiertos:</small>`;
+        html += ports.slice(0, 12).map(p => `<span class="port-badge open">${p}</span>`).join('');
+        if (ports.length > 12) html += `<span class="tag-pill">+${ports.length - 12} más</span>`;
+        html += `</div>`;
+    }
+
+    const vulns = sh.vulns || [];
+    if (vulns.length) {
+        html += `<div class="mt-2 pt-2 border-top"><small class="text-muted fw-bold d-block mb-1">CVEs:</small>`;
+        html += vulns.slice(0, 5).map(v => `<span class="badge bg-danger me-1 mb-1">${esc(v)}</span>`).join('');
+        html += `</div>`;
+    }
+
+    if (!html) html = '<p class="text-muted small">No se obtuvieron detalles adicionales.</p>';
+    body.innerHTML = html;
+    show('shCard');
+}
+
+// ===================== HISTORIAL =====================
+function saveHistory(ioc, type, verdict) {
+    let hist = JSON.parse(localStorage.getItem('investigate_history') || '[]');
+    hist = hist.filter(h => h.ioc !== ioc);
+    hist.unshift({ ioc, type, verdict, ts: Date.now() });
+    hist = hist.slice(0, 10);
+    localStorage.setItem('investigate_history', JSON.stringify(hist));
+    renderHistory();
+}
+
+function renderHistory() {
+    const hist = JSON.parse(localStorage.getItem('investigate_history') || '[]');
+    const container = document.getElementById('historyContainer');
+    if (!hist.length) { hide('historySection'); return; }
+
+    const verdColors = { malicious: 'text-danger', suspicious: 'text-warning', clean: 'text-success', unknown: 'text-muted' };
+    container.innerHTML = hist.map(h => `
+        <span class="history-item me-1 mb-1" onclick="setExample('${esc(h.ioc)}')">
+            <i class="fas fa-circle small ${verdColors[h.verdict] || 'text-muted'}"></i>
+            ${esc(h.ioc.length > 25 ? h.ioc.slice(0,25)+'…' : h.ioc)}
+        </span>`).join('');
+    show('historySection');
+}
+
+// ===================== UTILIDADES =====================
+function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+function showError(msg) {
+    hide('loadingSection'); hide('resultsSection');
+    document.getElementById('errorMsg').textContent = msg;
+    show('errorSection'); show('infoSection');
+}
+
+function setChip(src, state) {
+    const chip = document.getElementById(`chip-${src}`);
+    if (!chip) return;
+    const icons = { loading: 'fa-circle-notch spin', done: 'fa-check-circle', error: 'fa-times-circle', skipped: 'fa-minus-circle' };
+    const names = { vt: 'VirusTotal', mb: 'MalwareBazaar', ab: 'AbuseIPDB', sh: 'Shodan' };
+    chip.className = `source-chip ${state}`;
+    chip.innerHTML = `<i class="fas ${icons[state]}"></i> ${names[src]}`;
+}
+
+function esc(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(ts) {
+    if (!ts) return '—';
+    if (typeof ts === 'number') return new Date(ts * 1000).toLocaleDateString('es-ES');
+    return ts.split('T')[0];
+}
+
+function formatSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', function() {
+    renderHistory();
+
+    // Si viene IOC por parámetro de URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const iocParam = urlParams.get('ioc');
+    if (iocParam) {
+        document.getElementById('iocInput').value = iocParam;
+        detectIOCType(iocParam);
+        investigateIOC();
+    }
+});
+</script>
+{% endblock %}

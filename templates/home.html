@@ -1,0 +1,848 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSINT Framework - Threat Intelligence</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .tool-card {
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .stats-card {
+            border: none;
+            border-radius: 10px;
+        }
+        .module-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        .search-highlight {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        /* Estilos para la búsqueda rápida */
+        .tabs-container {
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            background-color: white;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            background-color: #f8f9fa;
+        }
+        .tab:hover {
+            background-color: #e9ecef;
+        }
+        .tab.active {
+            border-bottom: 3px solid #0d6efd;
+            font-weight: bold;
+            color: #0d6efd;
+            background-color: white;
+        }
+        .content-area {
+            background-color: white;
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-height: 400px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .info-card {
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+            border-radius: 0 4px 4px 0;
+        }
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-search"></i> OSINT Framework - Threat Intelligence
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav">
+                    <a class="nav-link active" href="/">
+                        <i class="fas fa-tools"></i> Herramientas
+                    </a>
+                    <a class="nav-link" href="/actors">
+                        <i class="fas fa-user-secret"></i> Actores
+                    </a>
+                    <a class="nav-link" href="/hash-analysis">
+                        <i class="fas fa-fingerprint"></i> Análisis Hash
+                    </a>
+                    <a class="nav-link" href="/malware-search">
+                        <i class="fas fa-bug"></i> Búsqueda Malware
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <!-- Módulos principales -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-shield-alt"></i> Plataforma OSINT & CTI
+                </h1>
+                <p class="lead text-center text-muted">
+                    Catálogo completo de herramientas de Threat Intelligence e inteligencia de amenazas
+                </p>
+            </div>
+        </div>
+
+        <!-- Búsqueda rápida por categorías -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-bolt"></i> Búsqueda Rápida</h5>
+                        <p class="text-muted mb-3">Haz clic en cualquier categoría para ver información detallada y enlaces de consulta</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="openSearchTab('yara')">
+                                <i class="fas fa-code"></i> YARA Rules
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="openSearchTab('ransomware')">
+                                <i class="fas fa-skull"></i> Ransomware
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" onclick="openSearchTab('mitre')">
+                                <i class="fas fa-crosshairs"></i> MITRE ATT&CK
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="openSearchTab('malware')">
+                                <i class="fas fa-bug"></i> Malware Analysis
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="openSearchTab('ioc')">
+                                <i class="fas fa-fingerprint"></i> IOC & Threat Intel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjetas de módulos -->
+        <div class="row mb-5">
+            <div class="col-md-4 mb-3">
+                <div class="card module-card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-tools fa-3x mb-3"></i>
+                        <h5>Herramientas OSINT</h5>
+                        <p>Catálogo completo de herramientas de inteligencia de fuentes abiertas</p>
+                        <a href="#tools-section" class="btn btn-light">Explorar</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card module-card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-user-secret fa-3x mb-3"></i>
+                        <h5>Actores de Amenazas</h5>
+                        <p>Base de datos de grupos ransomware y sus técnicas</p>
+                        <a href="/actors" class="btn btn-light">Ver Actores</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card module-card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-fingerprint fa-3x mb-3"></i>
+                        <h5>Análisis de Hashes</h5>
+                        <p>Analiza hashes con múltiples fuentes de inteligencia</p>
+                        <a href="/hash-analysis" class="btn btn-light">Analizar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros de búsqueda -->
+        <div class="row g-3 mb-4" id="tools-section">
+            <div class="col-md-5">
+                <input id="search" class="form-control" placeholder="Buscar herramienta (yara, mitre, ioc, ransomware...)">
+            </div>
+            <div class="col-md-4">
+                <select id="category" class="form-select">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button id="btn-search" class="btn btn-success">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div id="stats" class="row text-center mb-4">
+            <div class="col text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Herramientas -->
+        <div id="tools" class="row g-3">
+            <div class="col-12 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando herramientas...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Búsqueda Rápida -->
+    <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="searchModalLabel">
+                        <i class="fas fa-search"></i> Búsqueda Rápida - Detalles Completos
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tabs-container">
+                        <div class="tabs mb-3">
+                            <div class="tab active" data-tab="ransomware">Ransomware</div>
+                            <div class="tab" data-tab="mitre">MITRE ATT&CK</div>
+                            <div class="tab" data-tab="malware">Análisis de Malware</div>
+                            <div class="tab" data-tab="ioc">IOC & Threat Intel</div>
+                            <div class="tab" data-tab="yara">YARA Rules</div>
+                        </div>
+                        
+                        <div class="content-area">
+                            <!-- Contenido para Ransomware -->
+                            <div class="tab-content active" id="ransomware-content">
+                                <h4>Información sobre Ransomware</h4>
+                                
+                                <div class="info-card">
+                                    <h5>¿Qué es el ransomware?</h5>
+                                    <p>El ransomware es un tipo de software malicioso que bloquea el acceso a los datos o sistemas de la víctima y exige un rescate para restaurar el acceso. Los ataques de ransomware pueden tener impactos devastadores en organizaciones de todos los tamaños.</p>
+                                </div>
+                                
+                                <div class="row mb-4">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="stat-card">
+                                            <h6>Ataques reportados (2023)</h6>
+                                            <div class="number h4 text-primary">4,368</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="stat-card">
+                                            <h6>Sectores más afectados</h6>
+                                            <div class="number h4 text-success">Salud</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="stat-card">
+                                            <h6>Pérdidas promedio</h6>
+                                            <div class="number h4 text-danger">$1.85M</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Familias de ransomware activas</h5>
+                                    <p>Algunas de las familias de ransomware más activas actualmente incluyen LockBit, BlackCat (ALPHV), Clop, Play y Royal. Estas variantes utilizan técnicas de evasión avanzadas y suelen emplear la táctica de "doble extorsión".</p>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://www.cisa.gov/stopransomware" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">CISA: Stop Ransomware</a>
+                                    <a href="https://www.ic3.gov/" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">FBI IC3 (Reportar incidentes)</a>
+                                    <a href="https://www.nomoreransom.org/" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">No More Ransom (Herramientas de descifrado)</a>
+                                    <a href="https://attack.mitre.org/techniques/T1486/" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">MITRE: Data Encrypted for Impact</a>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenido para MITRE ATT&CK -->
+                            <div class="tab-content" id="mitre-content">
+                                <h4>MITRE ATT&CK Framework</h4>
+                                
+                                <div class="info-card">
+                                    <h5>¿Qué es MITRE ATT&CK?</h5>
+                                    <p>MITRE ATT&CK® es una base de conocimiento globalmente accesible de tácticas y técnicas adversarias basadas en observaciones del mundo real. El conocimiento sirve como base para el desarrollo de modelos de amenazas y metodologías en el sector privado, el gobierno y la comunidad de productos y servicios de ciberseguridad.</p>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Tácticas principales</h5>
+                                    <p>El framework ATT&CK organiza las técnicas en 14 tácticas que representan el "por qué" de una técnica: los objetivos operativos que un adversario intenta lograr.</p>
+                                    <ul>
+                                        <li><strong>Reconocimiento (Reconnaissance)</strong></li>
+                                        <li><strong>Desarrollo de recursos (Resource Development)</strong></li>
+                                        <li><strong>Acceso inicial (Initial Access)</strong></li>
+                                        <li><strong>Ejecución (Execution)</strong></li>
+                                        <li><strong>Persistencia (Persistence)</strong></li>
+                                        <li><strong>Escalada de privilegios (Privilege Escalation)</strong></li>
+                                        <li><strong>Evasón de defensas (Defense Evasion)</strong></li>
+                                        <li><strong>Acceso a credenciales (Credential Access)</strong></li>
+                                        <li><strong>Descubrimiento (Discovery)</strong></li>
+                                        <li><strong>Movimiento lateral (Lateral Movement)</strong></li>
+                                        <li><strong>Recolección (Collection)</strong></li>
+                                        <li><strong>Comando y control (Command and Control)</strong></li>
+                                        <li><strong>Exfiltración (Exfiltration)</strong></li>
+                                        <li><strong>Impacto (Impact)</strong></li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://attack.mitre.org/" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">Sitio oficial de MITRE ATT&CK</a>
+                                    <a href="https://attack.mitre.org/matrices/enterprise/" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">Matriz Enterprise</a>
+                                    <a href="https://github.com/mitre/cti" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">Repositorio GitHub (CTI)</a>
+                                    <a href="https://attack.mitre.org/resources/working-with-attack/" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">Recursos para trabajar con ATT&CK</a>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenido para Análisis de Malware -->
+                            <div class="tab-content" id="malware-content">
+                                <h4>Análisis de Malware</h4>
+                                
+                                <div class="info-card">
+                                    <h5>Métodos de análisis</h5>
+                                    <p>El análisis de malware implica examinar software malicioso para entender su funcionamiento, origen e impacto. Existen dos enfoques principales:</p>
+                                    <ul>
+                                        <li><strong>Análisis estático:</strong> Examinar el malware sin ejecutarlo, mediante la inspección de su código, cadenas, recursos y estructura.</li>
+                                        <li><strong>Análisis dinámico:</strong> Ejecutar el malware en un entorno controlado (sandbox) para observar su comportamiento y efectos.</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Herramientas comunes</h5>
+                                    <p>Los analistas de malware utilizan diversas herramientas especializadas:</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul>
+                                                <li><strong>Desensambladores:</strong> IDA Pro, Ghidra, Radare2</li>
+                                                <li><strong>Depuradores:</strong> x64dbg, OllyDbg, WinDbg</li>
+                                                <li><strong>Análisis de red:</strong> Wireshark, Process Monitor</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul>
+                                                <li><strong>Entornos sandbox:</strong> Cuckoo Sandbox, Any.run, Hybrid Analysis</li>
+                                                <li><strong>Análisis de memoria:</strong> Volatility, Rekall</li>
+                                                <li><strong>Análisis de archivos:</strong> PEStudio, Detect It Easy</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://www.hybrid-analysis.com/" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">Hybrid Analysis (Sandbox)</a>
+                                    <a href="https://any.run/" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">Any.run (Análisis interactivo)</a>
+                                    <a href="https://github.com/NationalSecurityAgency/ghidra" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">Ghidra (NSA)</a>
+                                    <a href="https://capesandbox.com/" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">CAPE Sandbox</a>
+                                    <a href="https://www.virustotal.com/gui/home/upload" class="btn btn-outline-warning btn-sm me-2 mb-2" target="_blank">VirusTotal</a>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenido para IOC & Threat Intel -->
+                            <div class="tab-content" id="ioc-content">
+                                <h4>IOC & Threat Intelligence</h4>
+                                
+                                <div class="info-card">
+                                    <h5>Indicadores de Compromiso (IOC)</h5>
+                                    <p>Los IOC son artefactos observados en una red o en un sistema operativo que con alta confianza indican un compromiso de seguridad. Pueden incluir direcciones IP, hashes de archivos, nombres de dominio, patrones de tráfico de red, etc.</p>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Tipos de Threat Intelligence</h5>
+                                    <ul>
+                                        <li><strong>Estratégica:</strong> Información de alto nivel sobre el panorama de amenazas para la toma de decisiones.</li>
+                                        <li><strong>Operacional:</strong> Información sobre capacidades, infraestructura y TTPs de actores de amenazas.</li>
+                                        <li><strong>Táctica:</strong> Información técnica sobre herramientas, técnicas y procedimientos específicos.</li>
+                                        <li><strong>Técnica:</strong> IOC específicos que pueden utilizarse para la detección y prevención.</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="row mb-4">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="stat-card">
+                                            <h6>IOC compartidos diariamente</h6>
+                                            <div class="number h4 text-primary">+50K</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="stat-card">
+                                            <h6>Fuentes principales</h6>
+                                            <div class="number h4 text-success">18</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://otx.alienvault.com/" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">AlienVault OTX</a>
+                                    <a href="https://www.misp-project.org/" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">MISP Threat Sharing</a>
+                                    <a href="https://www.circl.lu/" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">CIRCL Luxembourg</a>
+                                    <a href="https://www.recordedfuture.com/" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">Recorded Future</a>
+                                    <a href="https://www.threatconnect.com/" class="btn btn-outline-warning btn-sm me-2 mb-2" target="_blank">ThreatConnect</a>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenido para YARA Rules -->
+                            <div class="tab-content" id="yara-content">
+                                <h4>YARA Rules</h4>
+                                
+                                <div class="info-card">
+                                    <h5>¿Qué es YARA?</h5>
+                                    <p>YARA es una herramienta dirigida a investigadores de malware que les ayuda a identificar y clasificar muestras de malware. Con YARA puedes crear descripciones de familias de malware basadas en patrones textuales o binarios.</p>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Características principales</h5>
+                                    <ul>
+                                        <li><strong>Lenguaje de patrones:</strong> Permite describir malware basándose en cadenas de texto y bytes</li>
+                                        <li><strong>Flexibilidad:</strong> Puede aplicarse a diferentes tipos de archivos y formatos</li>
+                                        <li><strong>Comunidad activa:</strong> Gran cantidad de reglas compartidas por la comunidad</li>
+                                        <li><strong>Integración:</strong> Se integra con muchas herramientas de análisis de malware</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Estructura básica de una regla YARA</h5>
+                                    <pre class="bg-light p-3 rounded"><code>rule ExampleRule
+{
+    meta:
+        description = "Ejemplo de regla YARA"
+        author = "Analista"
+        date = "2023-01-01"
+    
+    strings:
+        $text_string = "malicious"
+        $hex_string = { E2 34 A1 C8 23 FB }
+    
+    condition:
+        $text_string or $hex_string
+}</code></pre>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://virustotal.github.io/yara/" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">Documentación Oficial YARA</a>
+                                    <a href="https://github.com/Yara-Rules/rules" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">Repositorio de Reglas YARA</a>
+                                    <a href="https://yaraify.abuse.ch/" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">YARAify (Búsqueda de malware)</a>
+                                    <a href="https://github.com/Neo23x0/yara" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">Reglas de Florian Roth</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>OSINT Framework - Threat Intelligence</h5>
+                    <p>Plataforma para análisis de inteligencia de amenazas e investigación de seguridad</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p><strong>Módulos disponibles:</strong></p>
+                    <ul class="list-unstyled">
+                        <li><a href="/" class="text-light">🔧 Herramientas OSINT/CTI</a></li>
+                        <li><a href="/actors" class="text-light">👥 Actores de Amenazas</a></li>
+                        <li><a href="/hash-analysis" class="text-light">🔍 Análisis de Hashes</a></li>
+                        <li><a href="/malware-search" class="text-light">🐛 Búsqueda Malware</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+   >
+                                    <p>Los analistas de malware utilizan diversas herramientas especializadas:</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul>
+                                                <li><strong>Desensambladores:</strong> IDA Pro, Ghidra, Radare2</li>
+                                                <li><strong>Depuradores:</strong> x64dbg, OllyDbg, WinDbg</li>
+                                                <li><strong>Análisis de red:</strong> Wireshark, Process Monitor</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul>
+                                                <li><strong>Entornos sandbox:</strong> Cuckoo Sandbox, Any.run, Hybrid Analysis</li>
+                                                <li><strong>Análisis de memoria:</strong> Volatility, Rekall</li>
+                                                <li><strong>Análisis de archivos:</strong> PEStudio, Detect It Easy</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://www.hybrid-analysis.com/" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">Hybrid Analysis (Sandbox)</a>
+                                    <a href="https://any.run/" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">Any.run (Análisis interactivo)</a>
+                                    <a href="https://github.com/NationalSecurityAgency/ghidra" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">Ghidra (NSA)</a>
+                                    <a href="https://capesandbox.com/" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">CAPE Sandbox</a>
+                                    <a href="https://www.virustotal.com/gui/home/upload" class="btn btn-outline-warning btn-sm me-2 mb-2" target="_blank">VirusTotal</a>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenido para IOC & Threat Intel -->
+                            <div class="tab-content" id="ioc-content">
+                                <h4>IOC & Threat Intelligence</h4>
+                                
+                                <div class="info-card">
+                                    <h5>Indicadores de Compromiso (IOC)</h5>
+                                    <p>Los IOC son artefactos observados en una red o en un sistema operativo que con alta confianza indican un compromiso de seguridad. Pueden incluir direcciones IP, hashes de archivos, nombres de dominio, patrones de tráfico de red, etc.</p>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Tipos de Threat Intelligence</h5>
+                                    <ul>
+                                        <li><strong>Estratégica:</strong> Información de alto nivel sobre el panorama de amenazas para la toma de decisiones.</li>
+                                        <li><strong>Operacional:</strong> Información sobre capacidades, infraestructura y TTPs de actores de amenazas.</li>
+                                        <li><strong>Táctica:</strong> Información técnica sobre herramientas, técnicas y procedimientos específicos.</li>
+                                        <li><strong>Técnica:</strong> IOC específicos que pueden utilizarse para la detección y prevención.</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="row mb-4">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="stat-card">
+                                            <h6>IOC compartidos diariamente</h6>
+                                            <div class="number h4 text-primary">+50K</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="stat-card">
+                                            <h6>Fuentes principales</h6>
+                                            <div class="number h4 text-success">18</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://otx.alienvault.com/" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">AlienVault OTX</a>
+                                    <a href="https://www.misp-project.org/" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">MISP Threat Sharing</a>
+                                    <a href="https://www.circl.lu/" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">CIRCL Luxembourg</a>
+                                    <a href="https://www.recordedfuture.com/" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">Recorded Future</a>
+                                    <a href="https://www.threatconnect.com/" class="btn btn-outline-warning btn-sm me-2 mb-2" target="_blank">ThreatConnect</a>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenido para YARA Rules -->
+                            <div class="tab-content" id="yara-content">
+                                <h4>YARA Rules</h4>
+                                
+                                <div class="info-card">
+                                    <h5>¿Qué es YARA?</h5>
+                                    <p>YARA es una herramienta dirigida a investigadores de malware que les ayuda a identificar y clasificar muestras de malware. Con YARA puedes crear descripciones de familias de malware basadas en patrones textuales o binarios.</p>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Características principales</h5>
+                                    <ul>
+                                        <li><strong>Lenguaje de patrones:</strong> Permite describir malware basándose en cadenas de texto y bytes</li>
+                                        <li><strong>Flexibilidad:</strong> Puede aplicarse a diferentes tipos de archivos y formatos</li>
+                                        <li><strong>Comunidad activa:</strong> Gran cantidad de reglas compartidas por la comunidad</li>
+                                        <li><strong>Integración:</strong> Se integra con muchas herramientas de análisis de malware</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <h5>Estructura básica de una regla YARA</h5>
+                                    <pre class="bg-light p-3 rounded"><code>rule ExampleRule
+{
+    meta:
+        description = "Ejemplo de regla YARA"
+        author = "Analista"
+        date = "2023-01-01"
+    
+    strings:
+        $text_string = "malicious"
+        $hex_string = { E2 34 A1 C8 23 FB }
+    
+    condition:
+        $text_string or $hex_string
+}</code></pre>
+                                </div>
+                                
+                                <div class="links">
+                                    <a href="https://virustotal.github.io/yara/" class="btn btn-outline-primary btn-sm me-2 mb-2" target="_blank">Documentación Oficial YARA</a>
+                                    <a href="https://github.com/Yara-Rules/rules" class="btn btn-outline-secondary btn-sm me-2 mb-2" target="_blank">Repositorio de Reglas YARA</a>
+                                    <a href="https://yaraify.abuse.ch/" class="btn btn-outline-success btn-sm me-2 mb-2" target="_blank">YARAify (Búsqueda de malware)</a>
+                                    <a href="https://github.com/Neo23x0/yara" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank">Reglas de Florian Roth</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>OSINT Framework - Threat Intelligence</h5>
+                    <p>Plataforma para análisis de inteligencia de amenazas e investigación de seguridad</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p><strong>Módulos disponibles:</strong></p>
+                    <ul class="list-unstyled">
+                        <li><a href="/" class="text-light">🔧 Herramientas OSINT/CTI</a></li>
+                        <li><a href="/actors" class="text-light">👥 Actores de Amenazas</a></li>
+                        <li><a href="/hash-analysis" class="text-light">🔍 Análisis de Hashes</a></li>
+                        <li><a href="/malware-search" class="text-light">🐛 Búsqueda Malware</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API = '/api';
+        
+        // Funcionalidad para abrir el modal de búsqueda rápida
+        function openSearchTab(tabName) {
+            const modal = new bootstrap.Modal(document.getElementById('searchModal'));
+            modal.show();
+            
+            // Cambiar a la pestaña correspondiente después de mostrar el modal
+            setTimeout(() => {
+                switchTab(tabName);
+            }, 500);
+        }
+        
+        // Cambiar entre pestañas en el modal
+        function switchTab(tabName) {
+            // Remover clase active de todas las pestañas
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remover clase active de todos los contenidos
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Agregar clase active a la pestaña clickeada
+            document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Mostrar el contenido correspondiente
+            document.getElementById(`${tabName}-content`).classList.add('active');
+        }
+        
+        // Inicializar funcionalidad de pestañas en el modal
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    switchTab(tabName);
+                });
+            });
+        });
+
+        // Búsqueda rápida por categorías (función original)
+        function searchTools(term) {
+            document.getElementById('search').value = term;
+            loadTools();
+        }
+
+        // Cargar categorías
+        async function loadCategories() {
+            try {
+                const response = await fetch(API + '/categories');
+                const data = await response.json();
+                const select = document.getElementById('category');
+                
+                data.data.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error cargando categorías:', error);
+            }
+        }
+
+        // Cargar estadísticas
+        async function loadStats() {
+            try {
+                const response = await fetch(API + '/stats');
+                const data = await response.json();
+                
+                document.getElementById('stats').innerHTML = `
+                    <div class="col-md-3">
+                        <div class="card stats-card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h4>${data.data.tools || 0}</h4>
+                                <small>Herramientas</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h4>${data.data.categories || 0}</h4>
+                                <small>Categorías</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h4>${data.data.clicks || 0}</h4>
+                                <small>Clicks</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card bg-secondary text-white">
+                            <div class="card-body text-center">
+                                <h4>4</h4>
+                                <small>Módulos CTI</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+            }
+        }
+
+        // Resaltar texto en resultados de búsqueda
+        function highlightText(text, searchTerm) {
+            if (!searchTerm) return text;
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="search-highlight">$1</span>');
+        }
+
+        // Cargar herramientas
+        async function loadTools() {
+            try {
+                const search = document.getElementById('search').value;
+                const category = document.getElementById('category').value;
+                
+                let url = API + '/tools?limit=100';
+                if (search) url += `&q=${encodeURIComponent(search)}`;
+                if (category) url += `&category=${encodeURIComponent(category)}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const toolsContainer = document.getElementById('tools');
+                
+                if (data.data.length === 0) {
+                    toolsContainer.innerHTML = `
+                        <div class="col-12 text-center">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> No se encontraron herramientas. Prueba con otros términos como "yara", "mitre", "ioc" o "ransomware".
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                toolsContainer.innerHTML = data.data.map(tool => `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card tool-card shadow-sm h-100">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">${search ? highlightText(tool.name, search) : tool.name}</h5>
+                                <p class="card-text flex-grow-1">${search ? highlightText(tool.description || 'Sin descripción', search) : (tool.description || 'Sin descripción')}</p>
+                                ${tool.tags && tool.tags.length > 0 ? `
+                                    <div class="mb-2">
+                                        ${tool.tags.map(tag => `<span class="badge bg-primary me-1">${search ? highlightText(tag, search) : tag}</span>`).join('')}
+                                    </div>
+                                ` : ''}
+                                <div class="d-flex justify-content-between align-items-center mt-auto">
+                                    <a href="${tool.url}" target="_blank" class="btn btn-sm btn-outline-primary"
+                                       onclick="fetch('${API}/tools/${tool.id}/click', {method: 'POST'})">
+                                        <i class="fas fa-external-link-alt"></i> Abrir
+                                    </a>
+                                    <small class="text-muted">${tool.category_id}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error cargando herramientas:', error);
+                document.getElementById('tools').innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> Error cargando herramientas: ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('btn-search').addEventListener('click', loadTools);
+        document.getElementById('search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loadTools();
+        });
+        document.getElementById('category').addEventListener('change', loadTools);
+
+        // Inicializar
+        loadCategories();
+        loadStats();
+        loadTools();
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

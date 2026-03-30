@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}OSINT Framework CTI - Plataforma de Inteligencia{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Inicio</li>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-5 animate-fade-in">
+    <div class="col-lg-8 mx-auto text-center">
+        <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white;">
+            <div class="card-body p-5">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-shield-alt me-3"></i>
+                    Plataforma de <span style="color: #10b981;">Cyber Threat Intelligence</span>
+                </h1>
+                <p class="lead mb-4 opacity-90">
+                    Framework OSINT profesional con análisis de amenazas, actores de ransomware,
+                    herramientas de investigación y dashboard SOC en tiempo real.
+                </p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="/dashboard" class="btn btn-light btn-lg px-4 fw-bold" style="color: #1e40af;">
+                        <i class="fas fa-chart-line me-2"></i>Ir al Dashboard SOC
+                    </a>
+                    <a href="/tools" class="btn btn-outline-light btn-lg px-4">
+                        <i class="fas fa-search me-2"></i>Explorar Herramientas
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="card stat-card h-100 border-start border-4 border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-tools fa-3x mb-3 text-primary"></i>
+                <div class="stat-number" id="stat-tools">138</div>
+                <p class="text-muted mb-0">Herramientas OSINT</p>
+                <small class="text-success"><i class="fas fa-arrow-up"></i> Actualizado</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100 border-start border-4 border-danger">
+            <div class="card-body text-center">
+                <i class="fas fa-user-secret fa-3x mb-3 text-danger"></i>
+                <div class="stat-number text-danger" id="stat-actors">10</div>
+                <p class="text-muted mb-0">Actores de Amenaza</p>
+                <small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Monitoreando</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100 border-start border-4 border-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-virus fa-3x mb-3 text-warning"></i>
+                <div class="stat-number text-warning" id="stat-ransomware">8</div>
+                <p class="text-muted mb-0">Ransomware Activo</p>
+                <small class="text-danger"><i class="fas fa-radiation"></i> Alto Riesgo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100 border-start border-4 border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-folder-open fa-3x mb-3 text-info"></i>
+                <div class="stat-number text-info" id="stat-categories">29</div>
+                <p class="text-muted mb-0">Categorías</p>
+                <small class="text-primary"><i class="fas fa-folder"></i> Organizado</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Grid -->
+<div class="row g-4 mb-5">
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(59, 130, 246, 0.1);">
+                        <i class="fas fa-tools fa-2x text-primary"></i>
+                    </div>
+                    <h5 class="card-title mb-0">Herramientas OSINT</h5>
+                </div>
+                <p class="card-text text-muted">
+                    138 herramientas categorizadas para investigación digital,
+                    análisis de redes sociales, dominios e infraestructura.
+                </p>
+                <a href="/tools" class="btn btn-primary-custom btn-sm w-100">
+                    Explorar <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(239, 68, 68, 0.1);">
+                        <i class="fas fa-user-secret fa-2x text-danger"></i>
+                    </div>
+                    <h5 class="card-title mb-0">Actores de Amenaza</h5>
+                </div>
+                <p class="card-text text-muted">
+                    Perfiles detallados de grupos APT y ransomware, TTPs,
+                    últimos ataques e IOCs asociados.
+                </p>
+                <a href="/actors" class="btn btn-primary-custom btn-sm w-100">
+                    Ver Actores <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(245, 158, 11, 0.1);">
+                        <i class="fas fa-fingerprint fa-2x text-warning"></i>
+                    </div>
+                    <h5 class="card-title mb-0">Análisis de Hash</h5>
+                </div>
+                <p class="card-text text-muted">
+                    Análisis automatizado de hashes con múltiples motores,
+                    detección de malware y reputación de archivos.
+                </p>
+                <a href="/hash" class="btn btn-primary-custom btn-sm w-100">
+                    Analizar <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(16, 185, 129, 0.1);">
+                        <i class="fas fa-bug fa-2x text-success"></i>
+                    </div>
+                    <h5 class="card-title mb-0">Búsqueda de Malware</h5>
+                </div>
+                <p class="card-text text-muted">
+                    Base de datos de familias de malware, indicadores de compromiso
+                    y técnicas de detección avanzadas.
+                </p>
+                <a href="/malware" class="btn btn-primary-custom btn-sm w-100">
+                    Buscar <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(139, 92, 246, 0.1);">
+                        <i class="fas fa-chart-line fa-2x" style="color: #8b5cf6;"></i>
+                    </div>
+                    <h5 class="card-title mb-0">Dashboard SOC</h5>
+                </div>
+                <p class="card-text text-muted">
+                    Centro de operaciones de seguridad con métricas en tiempo real,
+                    gráficos interactivos y alertas.
+                </p>
+                <a href="/dashboard" class="btn btn-primary-custom btn-sm w-100">
+                    Ver Dashboard <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(6, 182, 212, 0.1);">
+                        <i class="fas fa-code fa-2x text-info"></i>
+                    </div>
+                    <h5 class="card-title mb-0">API REST</h5>
+                </div>
+                <p class="card-text text-muted">
+                    Acceso programático a todas las funcionalidades. Integra nuestros
+                    datos en tus herramientas y workflows.
+                </p>
+                <a href="/api/stats" target="_blank" class="btn btn-primary-custom btn-sm w-100">
+                    Documentación <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity & Quick Actions -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-clock me-2 text-primary"></i>Actividad Reciente</h5>
+                <span class="badge bg-success">En vivo</span>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <h6 class="mb-1 text-dark">Nuevo actor añadido: BlackCat/ALPHV</h6>
+                        <small class="text-muted">Ransomware-as-a-Service actualizado con nuevos TTPs</small>
+                        <div class="mt-2">
+                            <span class="badge bg-danger me-2">Ransomware</span>
+                            <span class="badge bg-secondary me-2">Rusia</span>
+                            <small class="text-muted">Hace 2 horas</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <h6 class="mb-1 text-dark">Actualización de herramientas</h6>
+                        <small class="text-muted">15 nuevas herramientas añadidas a la categoría Dark Web</small>
+                        <div class="mt-2">
+                            <span class="badge bg-primary me-2">Dark Web</span>
+                            <small class="text-muted">Hace 5 horas</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <h6 class="mb-1 text-dark">Análisis de hash completado</h6>
+                        <small class="text-muted">Detección de nueva variante de LockBit identificada</small>
+                        <div class="mt-2">
+                            <span class="badge bg-danger me-2">LockBit</span>
+                            <span class="badge bg-warning">Crítico</span>
+                            <small class="text-muted">Hace 8 horas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2 text-warning"></i>Acciones Rápidas</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="/dashboard" class="btn btn-outline-primary text-start">
+                        <i class="fas fa-chart-line me-2"></i>Ver Dashboard Completo
+                    </a>
+                    <button class="btn btn-outline-success text-start" onclick="exportData()">
+                        <i class="fas fa-download me-2"></i>Exportar Datos (CSV)
+                    </button>
+                    <button class="btn btn-outline-warning text-start" onclick="showApiKey()">
+                        <i class="fas fa-key me-2"></i>Obtener API Key
+                    </button>
+                    <button class="btn btn-outline-info text-start" onclick="showHelp()">
+                        <i class="fas fa-question-circle me-2"></i>Guía de Uso
+                    </button>
+                </div>
+
+                <hr class="my-4">
+
+                <h6 class="mb-3">Estado del Sistema</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">API REST</span>
+                    <span class="text-success"><i class="fas fa-check-circle"></i> Online</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Base de Datos</span>
+                    <span class="text-success"><i class="fas fa-check-circle"></i> Conectada</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Último Scan</span>
+                    <span class="text-info">Hace 5 min</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Threat Map Preview -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-globe-americas me-2 text-primary"></i>Mapa de Amenazas en Tiempo Real</h5>
+                <a href="/dashboard" class="btn btn-sm btn-primary">Ver Completo</a>
+            </div>
+            <div class="card-body text-center p-5" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);">
+                <i class="fas fa-globe fa-5x text-primary mb-3 opacity-50"></i>
+                <h5 class="text-muted">Visualización geográfica de actores de amenaza</h5>
+                <p class="text-muted">Accede al Dashboard SOC para ver el mapa de calor completo</p>
+                <div class="row justify-content-center mt-4">
+                    <div class="col-md-2 col-4">
+                        <div class="text-center">
+                            <div class="h3 text-danger mb-0">9</div>
+                            <small class="text-muted">Rusia</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="text-center">
+                            <div class="h3 text-warning mb-0">12</div>
+                            <small class="text-muted">China</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="text-center">
+                            <div class="h3 text-info mb-0">5</div>
+                            <small class="text-muted">Corea del Norte</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="text-center">
+                            <div class="h3 text-success mb-0">4</div>
+                            <small class="text-muted">Irán</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="text-center">
+                            <div class="h3 text-secondary mb-0">8</div>
+                            <small class="text-muted">Otros</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Actualizar estadísticas desde la API
+async function loadStats() {
+    try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('stat-tools').textContent = data.data.tools || 138;
+            document.getElementById('stat-categories').textContent = data.data.categories || 29;
+            document.getElementById('stat-actors').textContent = data.data.actors || 10;
+            document.getElementById('stat-ransomware').textContent = data.data.ransomware_active || 8;
+        }
+    } catch (e) {
+        console.error('Error cargando estadísticas:', e);
+    }
+}
+
+function exportData() {
+    alert('Función de exportación disponible próximamente');
+}
+
+function showApiKey() {
+    alert('Sistema de autenticación en desarrollo');
+}
+
+function showHelp() {
+    alert('Documentación completa disponible en la próxima actualización');
+}
+
+// Cargar estadísticas al iniciar
+loadStats();
+</script>
+{% endblock %}

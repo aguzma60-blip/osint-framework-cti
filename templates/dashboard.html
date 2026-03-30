@@ -1,0 +1,1100 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard SOC - OSINT Framework CTI{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===== ESTILOS BASE ===== */
+.real-time-indicator {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 12px; background: rgba(16,185,129,0.1);
+    border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+}
+.pulse-dot { width:8px; height:8px; background:#10b981; border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.2)} }
+.metric-card { position:relative; overflow:hidden; background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%); border:1px solid #cbd5e1; }
+.metric-card::before { content:''; position:absolute; top:0;left:0;right:0; height:3px; background:linear-gradient(90deg,#3b82f6,#10b981,#f59e0b,#ef4444); background-size:300% 100%; animation:gradient-shift 3s ease infinite; }
+@keyframes gradient-shift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+.live-counter { font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; font-weight:700; }
+.trend-indicator { display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:600; padding:2px 8px; border-radius:12px; }
+.trend-up { background:rgba(16,185,129,0.15); color:#059669; }
+.trend-down { background:rgba(239,68,68,0.15); color:#dc2626; }
+
+/* ===== MAPA ===== */
+.threat-map-wrapper { position:relative; background:#0a0f1e; border-radius:16px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7); border:1px solid #1e3a5f; }
+.threat-map-container { position:relative; height:680px; background:radial-gradient(ellipse at center,#1e4976 0%,#163758 70%,#0f2847 100%); overflow:hidden; cursor:grab; }
+.threat-map-container:active { cursor:grabbing; }
+#worldMapSvg { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; }
+#worldMapSvg .country { fill:#0e2240; stroke:#1a4a7a; stroke-width:0.5; transition:fill 0.3s ease; cursor:default; }
+#worldMapSvg .country:hover { fill:#1a3a5c; }
+#worldMapSvg .sphere { fill:#0d1f3c; }
+#worldMapSvg .graticule { fill:none; stroke:rgba(30,80,140,0.15); stroke-width:0.3; }
+#attackCanvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:4; pointer-events:none; }
+#threatsLayer { position:absolute; top:0; left:0; width:100%; height:100%; z-index:5; pointer-events:none; transform-origin:0 0; }
+.threat-dot { position:absolute; border-radius:50%; pointer-events:auto; cursor:pointer; z-index:10; transform:translate(-50%,-50%); transition:transform 0.2s; }
+.threat-dot:hover { transform:translate(-50%,-50%) scale(2.5); z-index:100; }
+.threat-critical { width:8px; height:8px; background:#ff2222; box-shadow:0 0 8px #ff2222,0 0 20px rgba(255,34,34,0.5); animation:blink-c 1.2s infinite; }
+.threat-high { width:7px; height:7px; background:#f59e0b; box-shadow:0 0 8px #f59e0b,0 0 16px rgba(245,158,11,0.4); animation:blink-h 1.8s infinite; }
+.threat-medium { width:6px; height:6px; background:#3b82f6; box-shadow:0 0 6px #3b82f6,0 0 12px rgba(59,130,246,0.3); animation:blink-m 2.5s infinite; }
+.threat-low { width:5px; height:5px; background:#10b981; box-shadow:0 0 5px #10b981; animation:blink-l 3s infinite; }
+@keyframes blink-c { 0%,100%{opacity:1;transform:translate(-50%,-50%) scale(1)} 50%{opacity:0.5;transform:translate(-50%,-50%) scale(1.3)} }
+@keyframes blink-h { 0%,100%{opacity:1} 50%{opacity:0.6} }
+@keyframes blink-m { 0%,100%{opacity:1} 50%{opacity:0.7} }
+@keyframes blink-l { 0%,100%{opacity:0.9} 50%{opacity:0.5} }
+.threat-critical::after { content:''; position:absolute; top:50%; left:50%; width:20px; height:20px; border:1px solid rgba(255,34,34,0.6); border-radius:50%; transform:translate(-50%,-50%); animation:ring-expand 1.5s ease-out infinite; }
+@keyframes ring-expand { 0%{transform:translate(-50%,-50%) scale(0.5);opacity:1} 100%{transform:translate(-50%,-50%) scale(2.5);opacity:0} }
+.grid-overlay { position:absolute; top:0; left:0; width:100%; height:100%; background-image:linear-gradient(rgba(30,100,200,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(30,100,200,0.04) 1px,transparent 1px); background-size:50px 50px; pointer-events:none; z-index:1; }
+.map-filters { position:absolute; bottom:20px; left:20px; display:flex; gap:8px; z-index:100; flex-wrap:wrap; }
+.filter-btn { padding:6px 14px; border-radius:20px; background:rgba(6,13,26,0.9); border:1px solid #1e4a8a; color:#94a3b8; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s; backdrop-filter:blur(10px); letter-spacing:0.5px; text-transform:uppercase; }
+.filter-btn:hover,.filter-btn.active { background:#1d4ed8; border-color:#3b82f6; color:white; box-shadow:0 0 12px rgba(59,130,246,0.4); }
+.map-legend { position:absolute; top:20px; right:20px; background:rgba(6,13,26,0.92); border:1px solid #1e3a5f; border-radius:10px; padding:14px 16px; color:white; z-index:100; backdrop-filter:blur(10px); font-size:0.82rem; }
+.legend-item { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.map-header { position:absolute; top:16px; left:16px; z-index:100; color:white; }
+.map-header h6 { font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:#3b82f6; margin-bottom:2px; }
+.map-header .map-title { font-size:1rem; font-weight:700; color:white; }
+.zoom-controls { position:absolute; bottom:80px; right:20px; z-index:200; display:flex; flex-direction:column; gap:4px; }
+.zoom-btn { width:34px; height:34px; background:rgba(6,13,26,0.92); border:1px solid #1e4a8a; color:white; border-radius:8px; cursor:pointer; font-size:1.1rem; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all 0.2s; backdrop-filter:blur(10px); line-height:1; }
+.zoom-btn:hover { background:#1d4ed8; border-color:#3b82f6; box-shadow:0 0 12px rgba(59,130,246,0.4); }
+.zoom-btn.zoom-reset { font-size:0.6rem; font-weight:800; letter-spacing:0.5px; color:#94a3b8; }
+.zoom-level-indicator { position:absolute; bottom:20px; right:20px; z-index:100; background:rgba(6,13,26,0.85); border:1px solid #1e3a5f; border-radius:6px; padding:4px 10px; color:#64748b; font-size:0.72rem; font-weight:700; letter-spacing:1px; backdrop-filter:blur(10px); }
+.map-tooltip { position:fixed; background:rgba(6,13,26,0.98); border:1px solid #3b82f6; border-radius:8px; padding:12px 16px; color:white; font-size:0.85rem; pointer-events:none; z-index:9999; box-shadow:0 10px 25px rgba(0,0,0,0.6),0 0 20px rgba(59,130,246,0.15); min-width:190px; }
+.tooltip-country { font-weight:700; font-size:1rem; margin-bottom:6px; }
+.tooltip-row { display:flex; justify-content:space-between; gap:16px; color:#94a3b8; font-size:0.8rem; margin-bottom:3px; }
+.tooltip-val { color:white; font-weight:600; }
+.map-stats-panel { background:#f8fafc; border-top:1px solid #e2e8f0; padding:20px; }
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.stat-box { background:white; border:1px solid #e2e8f0; border-radius:12px; padding:18px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.stat-number { font-size:1.8rem; font-weight:700; margin-bottom:4px; }
+.stat-label { font-size:0.8rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; }
+.cyber-weather { display:flex; align-items:center; gap:16px; padding:20px; background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%); color:white; border-radius:12px; }
+.weather-icon { font-size:3rem; animation:lightning 2s infinite; }
+@keyframes lightning { 0%,90%,100%{opacity:1} 95%{opacity:0.3} }
+.alert-feed { max-height:300px; overflow-y:auto; }
+.alert-item { border-left:3px solid; padding:12px; margin-bottom:8px; background:white; border-radius:0 8px 8px 0; animation:slide-in 0.3s ease; transition:all 0.3s; }
+.alert-item:hover { transform:translateX(5px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+@keyframes slide-in { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+.alert-critical { border-left-color:#dc2626; background:#fef2f2; }
+.alert-high { border-left-color:#f59e0b; background:#fffbeb; }
+.alert-medium { border-left-color:#3b82f6; background:#eff6ff; }
+.alert-low { border-left-color:#10b981; background:#f0fdf4; }
+.hour-view-btn.active { background:#dbeafe !important; color:#1d4ed8 !important; }
+
+/* ===== BADGE FUENTE DE DATOS ===== */
+.data-source-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 0.62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.badge-real { background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3); }
+.badge-sim  { background: rgba(148,163,184,0.15); color: #64748b; border: 1px solid rgba(148,163,184,0.3); }
+
+/* ===== SCORE DE RIESGO PREDICTIVO ===== */
+.risk-panel {
+    background: linear-gradient(160deg,#0f172a 0%,#1a2540 50%,#0f1e35 100%);
+    border: 1px solid #1e3a5f; border-radius: 14px; overflow: hidden;
+    color: white; height: 100%; display: flex; flex-direction: column;
+}
+.risk-panel-header { padding:16px 18px 12px; border-bottom:1px solid rgba(30,58,95,0.8); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.risk-panel-title { font-size:0.9rem; font-weight:700; color:#e2e8f0; display:flex; align-items:center; gap:8px; }
+.risk-panel-title i { color:#818cf8; }
+.ai-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; background:rgba(129,140,248,0.12); border:1px solid rgba(129,140,248,0.25); font-size:0.68rem; font-weight:700; color:#a5b4fc; text-transform:uppercase; letter-spacing:0.8px; }
+.ai-badge-dot { width:5px; height:5px; background:#818cf8; border-radius:50%; animation:pulse 1.8s infinite; }
+.risk-subheader { padding:8px 18px 6px; font-size:0.68rem; color:#475569; text-transform:uppercase; letter-spacing:0.8px; flex-shrink:0; border-bottom:1px solid rgba(30,58,95,0.4); }
+.risk-list { padding:10px 14px; flex:1; overflow-y:auto; }
+.risk-item { position:relative; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; margin-bottom:7px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); transition:background 0.2s,transform 0.2s; overflow:hidden; }
+.risk-item::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px 0 0 3px; }
+.risk-item.lvl-critical::before { background:#ef4444; }
+.risk-item.lvl-high::before { background:#f59e0b; }
+.risk-item.lvl-elevated::before { background:#3b82f6; }
+.risk-item:hover { background:rgba(255,255,255,0.06); transform:translateX(2px); }
+.risk-rank { font-size:0.68rem; font-weight:800; color:#334155; width:14px; text-align:center; flex-shrink:0; }
+.risk-flag { font-size:1.15rem; flex-shrink:0; line-height:1; }
+.risk-body { flex:1; min-width:0; }
+.risk-country-name { font-size:0.83rem; font-weight:700; color:#e2e8f0; margin-bottom:4px; }
+.risk-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.risk-bar-track { flex:1; height:5px; background:rgba(255,255,255,0.07); border-radius:3px; overflow:hidden; }
+.risk-bar-fill { height:100%; border-radius:3px; transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+.risk-score-num { font-size:0.95rem; font-weight:800; width:30px; text-align:right; flex-shrink:0; }
+.risk-meta-row { display:flex; justify-content:space-between; align-items:center; }
+.risk-eta { font-size:0.65rem; color:#64748b; display:flex; align-items:center; gap:3px; }
+.risk-eta.warn { color:#fbbf24; }
+.risk-actor-count { font-size:0.62rem; color:#475569; }
+.risk-trend-badge { font-size:0.62rem; font-weight:800; padding:2px 6px; border-radius:8px; }
+.risk-trend-badge.up { background:rgba(239,68,68,0.2); color:#f87171; }
+.risk-trend-badge.down { background:rgba(16,185,129,0.2); color:#34d399; }
+.risk-trend-badge.stable { background:rgba(148,163,184,0.12); color:#94a3b8; }
+.risk-panel-footer { padding:9px 18px; border-top:1px solid rgba(30,58,95,0.6); display:flex; justify-content:space-between; align-items:center; font-size:0.68rem; color:#334155; flex-shrink:0; }
+.risk-next-update { color:#3b82f6; font-weight:700; font-variant-numeric:tabular-nums; }
+
+/* ===== CAMPAÑAS ACTIVAS ===== */
+.campaign-panel { background:white; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; height:100%; display:flex; flex-direction:column; }
+.campaign-panel-header { padding:15px 18px 11px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.campaign-panel-title { font-size:0.9rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px; margin:0; }
+.campaign-active-badge { display:flex; align-items:center; gap:4px; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; font-size:0.7rem; font-weight:800; padding:3px 9px; border-radius:20px; }
+.campaign-active-badge .dot-red { width:6px; height:6px; background:#dc2626; border-radius:50%; animation:pulse 1.4s infinite; }
+.campaign-body { padding:10px 14px; flex:1; overflow-y:auto; }
+.campaign-item { border-radius:11px; padding:13px 14px; margin-bottom:9px; border:1px solid #f1f5f9; background:#fafafa; position:relative; transition:border-color 0.2s,box-shadow 0.2s; }
+.campaign-item:hover { border-color:#cbd5e1; box-shadow:0 2px 10px rgba(0,0,0,0.06); }
+.campaign-item.sev-critical { border-left:4px solid #dc2626; background:linear-gradient(135deg,#fff8f8 0%,#fafafa 60%); }
+.campaign-item.sev-high { border-left:4px solid #f59e0b; background:linear-gradient(135deg,#fffdf5 0%,#fafafa 60%); }
+.campaign-item.sev-medium { border-left:4px solid #3b82f6; background:linear-gradient(135deg,#f8fbff 0%,#fafafa 60%); }
+.camp-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:7px; }
+.camp-name { font-weight:800; font-size:0.85rem; color:#0f172a; font-family:'Courier New',monospace; letter-spacing:0.3px; }
+.camp-sev-pill { font-size:0.62rem; font-weight:800; padding:2px 7px; border-radius:10px; text-transform:uppercase; letter-spacing:0.4px; flex-shrink:0; }
+.pill-critical { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+.pill-high { background:#fffbeb; color:#d97706; border:1px solid #fde68a; }
+.pill-medium { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+.camp-meta { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:9px; }
+.camp-meta-item { display:flex; align-items:center; gap:3px; font-size:0.7rem; color:#64748b; }
+.camp-meta-item i { font-size:0.6rem; color:#94a3b8; }
+.camp-progress-label { display:flex; justify-content:space-between; margin-bottom:3px; }
+.camp-progress-label span { font-size:0.63rem; color:#94a3b8; }
+.camp-progress-label .pct { font-weight:700; }
+.camp-track { height:7px; background:#f1f5f9; border-radius:4px; overflow:hidden; margin-bottom:8px; }
+.camp-fill { height:100%; border-radius:4px; transition:width 1s ease; position:relative; }
+.camp-fill::after { content:''; position:absolute; right:-1px; top:50%; transform:translateY(-50%); width:9px; height:9px; border-radius:50%; animation:pulse 1.5s infinite; }
+.fill-critical { background:linear-gradient(90deg,#fca5a5,#dc2626); }
+.fill-critical::after { background:#dc2626; box-shadow:0 0 5px #dc2626; }
+.fill-high { background:linear-gradient(90deg,#fde68a,#f59e0b); }
+.fill-high::after { background:#f59e0b; box-shadow:0 0 5px #f59e0b; }
+.fill-medium { background:linear-gradient(90deg,#bfdbfe,#3b82f6); }
+.fill-medium::after { background:#3b82f6; box-shadow:0 0 5px #3b82f6; }
+.camp-timeline { display:flex; align-items:center; gap:6px; font-size:0.62rem; color:#94a3b8; margin-bottom:7px; }
+.camp-timeline-track { flex:1; height:3px; background:#f1f5f9; border-radius:2px; overflow:hidden; }
+.camp-timeline-fill { height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:2px; }
+.camp-tags { display:flex; gap:4px; flex-wrap:wrap; }
+.camp-tag { font-size:0.6rem; font-weight:700; padding:2px 6px; border-radius:6px; background:#f1f5f9; color:#475569; text-transform:uppercase; letter-spacing:0.3px; border:1px solid #e2e8f0; }
+.camp-new { position:absolute; top:8px; right:8px; font-size:0.58rem; font-weight:800; padding:2px 6px; border-radius:6px; background:#dc2626; color:white; text-transform:uppercase; letter-spacing:0.5px; animation:new-flash 1.8s infinite; }
+@keyframes new-flash { 0%,100%{opacity:1} 50%{opacity:0.45} }
+.camp-attacks { display:flex; align-items:center; gap:4px; font-size:0.68rem; font-weight:700; color:#374151; }
+.camp-attacks-count { font-variant-numeric:tabular-nums; }
+
+@media (max-width:768px) {
+    .threat-map-container { height:350px; }
+    .stat-grid { grid-template-columns:repeat(2,1fr); }
+    .map-filters { flex-wrap:wrap; }
+}
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">Inicio</a></li>
+<li class="breadcrumb-item active">Dashboard SOC</li>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1"><i class="fas fa-shield-alt me-3 text-primary"></i>Security Operations Center</h2>
+        <p class="text-muted mb-0">Threat Intelligence Platform • Global Cyber Threat Monitoring</p>
+    </div>
+    <div class="d-flex gap-3 align-items-center">
+        <div class="real-time-indicator"><span class="pulse-dot"></span><span>LIVE DATA</span></div>
+        <span class="text-muted" id="lastUpdate">Cargando...</span>
+        <div class="btn-group">
+            <button class="btn btn-outline-primary btn-sm" onclick="exportDashboard('pdf')"><i class="fas fa-file-pdf"></i></button>
+            <button class="btn btn-outline-success btn-sm" onclick="exportDashboard('csv')"><i class="fas fa-file-csv"></i></button>
+            <button class="btn btn-primary btn-sm" onclick="toggleFullscreen()"><i class="fas fa-expand"></i></button>
+        </div>
+    </div>
+</div>
+
+<!-- Cyber Weather (dinámico) -->
+<div class="cyber-weather mb-4" id="cyberWeather">
+    <div class="weather-icon"><i class="fas fa-sync fa-spin text-white"></i></div>
+    <div><h4 class="mb-1">Cargando estado global...</h4><p class="mb-0 opacity-90" id="weatherDesc">Consultando base de datos de amenazas</p></div>
+    <div class="ms-auto text-end"><div class="h2 mb-0" id="weatherScore">--</div><small>Nivel de Amenaza</small></div>
+</div>
+
+<!-- KPIs — datos reales -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="text-muted text-uppercase small fw-bold mb-1">Actores Monitoreados</h6>
+                        <div class="display-4 fw-bold text-primary live-counter" id="monitoredActors">--</div>
+                    </div>
+                    <span class="data-source-badge badge-real"><i class="fas fa-database me-1"></i>DB Real</span>
+                </div>
+                <div class="progress" style="height:4px;"><div class="progress-bar bg-primary" id="actorsBar" style="width:0%"></div></div>
+                <small class="text-muted" id="activeActorsLabel">cargando...</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="text-muted text-uppercase small fw-bold mb-1">Ransomware Activos</h6>
+                        <div class="display-4 fw-bold text-danger live-counter" id="activeRansomware">--</div>
+                    </div>
+                    <span class="data-source-badge badge-real"><i class="fas fa-database me-1"></i>DB Real</span>
+                </div>
+                <div class="progress" style="height:4px;"><div class="progress-bar bg-danger" id="ransomBar" style="width:0%"></div></div>
+                <small class="text-muted" id="ransomLabel">cargando...</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="text-muted text-uppercase small fw-bold mb-1">Hashes Analizados</h6>
+                        <div class="display-4 fw-bold text-warning live-counter" id="iocsDetected">--</div>
+                    </div>
+                    <span class="data-source-badge badge-real"><i class="fas fa-database me-1"></i>DB Real</span>
+                </div>
+                <div class="progress" style="height:4px;"><div class="progress-bar bg-warning" id="hashBar" style="width:0%"></div></div>
+                <small class="text-muted" id="hashLabel">cargando...</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="text-muted text-uppercase small fw-bold mb-1">Herramientas OSINT</h6>
+                        <div class="display-4 fw-bold text-success live-counter" id="totalTools">--</div>
+                    </div>
+                    <span class="data-source-badge badge-real"><i class="fas fa-database me-1"></i>DB Real</span>
+                </div>
+                <div class="progress" style="height:4px;"><div class="progress-bar bg-success" id="toolsBar" style="width:0%"></div></div>
+                <small class="text-muted" id="toolsLabel">cargando...</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MAPA -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="threat-map-wrapper">
+            <div class="threat-map-container" id="threatMap">
+                <div class="grid-overlay"></div>
+                <div class="map-header">
+                    <h6>Global Threat Intelligence</h6>
+                    <div class="map-title">Cyber Attack Map — Live</div>
+                </div>
+                <svg id="worldMapSvg"></svg>
+                <canvas id="attackCanvas"></canvas>
+                <div id="threatsLayer"></div>
+                <div class="map-legend">
+                    <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;font-weight:700;">Nivel de Amenaza</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#ff2222;box-shadow:0 0 6px #ff2222"></div><span>Crítico</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></div><span>Alto</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6"></div><span>Medio</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#10b981;box-shadow:0 0 5px #10b981"></div><span>Bajo</span></div>
+                    <div style="border-top:1px solid #1e3a5f;margin:8px 0;"></div>
+                    <div class="legend-item"><div style="width:30px;height:2px;background:linear-gradient(90deg,transparent,#ff4444,transparent);border-radius:1px;margin-right:4px;"></div><span>Vector de ataque</span></div>
+                    <div style="border-top:1px solid #1e3a5f;margin:8px 0 4px 0;"></div>
+                    <div style="font-size:0.68rem;color:#475569;text-align:center;">Scroll = Zoom • Drag = Mover</div>
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomIn()">+</button>
+                    <button class="zoom-btn zoom-reset" onclick="zoomReset()">RST</button>
+                    <button class="zoom-btn" onclick="zoomOut()">−</button>
+                </div>
+                <div class="zoom-level-indicator" id="zoomIndicator">ZOOM 1.0x</div>
+                <div class="map-filters">
+                    <button class="filter-btn active" onclick="filterThreats('all')">Todas</button>
+                    <button class="filter-btn" onclick="filterThreats('ransomware')">Ransomware</button>
+                    <button class="filter-btn" onclick="filterThreats('apt')">APT</button>
+                    <button class="filter-btn" onclick="filterThreats('ddos')">DDoS</button>
+                    <button class="filter-btn" onclick="filterThreats('phishing')">Phishing</button>
+                </div>
+            </div>
+            <div class="map-stats-panel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-bar me-2 text-primary"></i>Estadísticas en Tiempo Real</h5>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-danger">Crítico: <span id="criticalCount">0</span></span>
+                        <span class="badge bg-warning">Alto: <span id="highCount">0</span></span>
+                        <span class="badge bg-primary">Medio: <span id="mediumCount">0</span></span>
+                    </div>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-box"><div class="stat-number text-danger" id="liveAttacks">0</div><div class="stat-label">Ataques/s</div></div>
+                    <div class="stat-box"><div class="stat-number text-warning" id="affectedCountries">0</div><div class="stat-label">Países Afectados</div></div>
+                    <div class="stat-box"><div class="stat-number text-success">12ms</div><div class="stat-label">Latencia Promedio</div></div>
+                    <div class="stat-box"><div class="stat-number text-primary" id="connectionsPerSec">0</div><div class="stat-label">Conexiones/s</div></div>
+                </div>
+                <!-- Origen top: datos reales -->
+                <div class="mt-3 pt-3 border-top" id="topCountriesRow">
+                    <div class="text-center text-muted small">Cargando datos de origen...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FILA: SCORE PREDICTIVO + CAMPAÑAS + ALERTAS -->
+<div class="row g-4 mb-4">
+
+    <!-- SCORE DE RIESGO PREDICTIVO — datos reales -->
+    <div class="col-lg-4">
+        <div class="risk-panel">
+            <div class="risk-panel-header">
+                <div class="risk-panel-title">
+                    <i class="fas fa-brain"></i>Score de Riesgo Predictivo
+                </div>
+                <div class="ai-badge"><span class="ai-badge-dot"></span>DB Real</div>
+            </div>
+            <div class="risk-subheader">Top 5 países · actores activos en tu base de datos</div>
+            <div class="risk-list" id="riskList"><div class="text-center py-4 text-muted" style="font-size:0.8rem;">Cargando...</div></div>
+            <div class="risk-panel-footer">
+                <span>fuente: threat_actors · status=active · count/país</span>
+                <span class="risk-next-update" id="riskCountdown">actualiza en 60s</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CAMPAÑAS ACTIVAS — datos reales -->
+    <div class="col-lg-4">
+        <div class="campaign-panel">
+            <div class="campaign-panel-header">
+                <h5 class="campaign-panel-title">
+                    <i class="fas fa-crosshairs text-danger"></i>Actores Activos Detectados
+                </h5>
+                <div class="campaign-active-badge">
+                    <span class="dot-red"></span>
+                    <span id="campCount">0</span> activos
+                </div>
+            </div>
+            <div class="campaign-body" id="campList">
+                <div class="text-center py-4 text-muted" style="font-size:0.8rem;">Cargando actores...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ALERTAS EN VIVO -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-bell me-2 text-danger"></i>Alertas en Vivo</h5>
+                <span class="data-source-badge badge-sim">Simulado</span>
+            </div>
+            <div class="card-body alert-feed" id="alertFeed"></div>
+        </div>
+    </div>
+</div>
+
+<!-- FILA: HORA + SECTORES + PAÍSES -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="mb-0"><i class="fas fa-fire me-2 text-warning"></i>Ataques por Hora (UTC)</h5>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-xs border-0 px-2 py-1 rounded hour-view-btn active" style="font-size:0.72rem;font-weight:700;background:#f1f5f9;color:#475569;" onclick="switchHourView('hoy')" id="btnHoy">HOY</button>
+                    <button class="btn btn-xs border-0 px-2 py-1 rounded hour-view-btn" style="font-size:0.72rem;font-weight:700;background:#f1f5f9;color:#94a3b8;" onclick="switchHourView('ayer')" id="btnAyer">AYER</button>
+                </div>
+            </div>
+            <div class="card-body p-2 pb-1">
+                <div class="d-flex gap-2 mb-2 px-1">
+                    <div class="flex-fill text-center p-1 rounded" style="background:#fef2f2;border:1px solid #fecaca;">
+                        <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Hora Pico</div>
+                        <div style="font-size:0.95rem;font-weight:800;color:#dc2626;" id="peakHour">--:00</div>
+                    </div>
+                    <div class="flex-fill text-center p-1 rounded" style="background:#eff6ff;border:1px solid #bfdbfe;">
+                        <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Promedio/h</div>
+                        <div style="font-size:0.95rem;font-weight:800;color:#3b82f6;" id="avgPerHour">--</div>
+                    </div>
+                    <div class="flex-fill text-center p-1 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                        <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">vs Ayer</div>
+                        <div style="font-size:0.95rem;font-weight:800;color:#10b981;" id="vsYesterday">--</div>
+                    </div>
+                </div>
+                <div style="position:relative;height:175px;"><canvas id="hourlyAreaChart"></canvas></div>
+                <div class="px-1 mt-1">
+                    <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Tipo predominante por hora</div>
+                    <div id="dominantTypeBar" style="display:flex;height:10px;border-radius:4px;overflow:hidden;gap:1px;"></div>
+                    <div class="d-flex justify-content-between mt-1" style="font-size:0.6rem;color:#94a3b8;"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>23h</span></div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-2 px-1">
+                    <div class="d-flex align-items-center gap-1"><div style="width:8px;height:8px;border-radius:2px;background:#dc2626;"></div><span style="font-size:0.68rem;color:#64748b;">Ransomware</span></div>
+                    <div class="d-flex align-items-center gap-1"><div style="width:8px;height:8px;border-radius:2px;background:#f59e0b;"></div><span style="font-size:0.68rem;color:#64748b;">APT</span></div>
+                    <div class="d-flex align-items-center gap-1"><div style="width:8px;height:8px;border-radius:2px;background:#3b82f6;"></div><span style="font-size:0.68rem;color:#64748b;">DDoS</span></div>
+                    <div class="d-flex align-items-center gap-1"><div style="width:8px;height:8px;border-radius:2px;background:#10b981;"></div><span style="font-size:0.68rem;color:#64748b;">Phishing</span></div>
+                    <div class="d-flex align-items-center gap-1"><div style="width:8px;height:8px;border-radius:2px;background:#8b5cf6;"></div><span style="font-size:0.68rem;color:#64748b;">Malware</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTORES — datos reales -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-crosshairs me-2 text-info"></i>Sectores más Atacados</h5>
+                <span class="data-source-badge badge-real"><i class="fas fa-database me-1"></i>DB Real</span>
+            </div>
+            <div class="card-body"><canvas id="sectorsChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- PAÍSES — datos reales -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-globe me-2 text-primary"></i>Top Países de Origen</h5>
+                <span class="data-source-badge badge-real"><i class="fas fa-database me-1"></i>DB Real</span>
+            </div>
+            <div class="card-body"><canvas id="countriesChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2 text-success"></i>Tendencia de Amenazas (30 días)</h5>
+                <span class="data-source-badge badge-sim">Simulado</span>
+            </div>
+            <div class="card-body"><canvas id="trendChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ==================== CONFIGURACIÓN ====================
+const THREAT_COUNT = 400;
+let activeFilter = 'all';
+let threats = [];
+let projection, pathGenerator;
+let mapWidth, mapHeight;
+let _mapSvg, _mapZoom, _mapGroup;
+let currentZoomTransform = d3.zoomIdentity;
+
+// Datos de países para el mapa (simulados, pesos basados en actores reales)
+const COUNTRY_DATA = [
+    {name:'EE.UU.',lon:-95,lat:38,weight:14,iso:'US'},{name:'Canadá',lon:-96,lat:56,weight:7,iso:'CA'},
+    {name:'México',lon:-102,lat:24,weight:5,iso:'MX'},{name:'Brasil',lon:-51,lat:-10,weight:9,iso:'BR'},
+    {name:'Argentina',lon:-65,lat:-34,weight:4,iso:'AR'},{name:'Chile',lon:-71,lat:-30,weight:3,iso:'CL'},
+    {name:'Colombia',lon:-74,lat:4,weight:3,iso:'CO'},{name:'Reino Unido',lon:-2,lat:54,weight:6,iso:'GB'},
+    {name:'Francia',lon:2,lat:46,weight:5,iso:'FR'},{name:'Alemania',lon:10,lat:51,weight:6,iso:'DE'},
+    {name:'Italia',lon:12,lat:42,weight:4,iso:'IT'},{name:'España',lon:-4,lat:40,weight:4,iso:'ES'},
+    {name:'Países Bajos',lon:5,lat:52,weight:3,iso:'NL'},{name:'Suecia',lon:15,lat:62,weight:3,iso:'SE'},
+    {name:'Polonia',lon:20,lat:52,weight:4,iso:'PL'},{name:'Rusia',lon:90,lat:60,weight:20,iso:'RU'},
+    {name:'Ucrania',lon:32,lat:49,weight:5,iso:'UA'},{name:'Bielorrusia',lon:28,lat:53,weight:2,iso:'BY'},
+    {name:'Rumanía',lon:25,lat:46,weight:3,iso:'RO'},{name:'Turquía',lon:35,lat:39,weight:6,iso:'TR'},
+    {name:'Irán',lon:53,lat:32,weight:8,iso:'IR'},{name:'Arabia Saudita',lon:45,lat:24,weight:4,iso:'SA'},
+    {name:'Israel',lon:35,lat:31,weight:4,iso:'IL'},{name:'Nigeria',lon:8,lat:10,weight:5,iso:'NG'},
+    {name:'Sudáfrica',lon:25,lat:-29,weight:4,iso:'ZA'},{name:'Egipto',lon:30,lat:26,weight:4,iso:'EG'},
+    {name:'India',lon:78,lat:20,weight:10,iso:'IN'},{name:'Pakistán',lon:70,lat:30,weight:4,iso:'PK'},
+    {name:'China',lon:104,lat:35,weight:18,iso:'CN'},{name:'Japón',lon:138,lat:36,weight:7,iso:'JP'},
+    {name:'Corea del Sur',lon:128,lat:36,weight:4,iso:'KR'},{name:'Corea del Norte',lon:127,lat:40,weight:6,iso:'KP'},
+    {name:'Vietnam',lon:106,lat:16,weight:4,iso:'VN'},{name:'Indonesia',lon:117,lat:-2,weight:5,iso:'ID'},
+    {name:'Australia',lon:134,lat:-25,weight:5,iso:'AU'},{name:'Kazakhstan',lon:67,lat:48,weight:4,iso:'KZ'},
+];
+
+const THREAT_TYPES = ['ransomware','apt','ddos','phishing','malware'];
+const LEVELS = ['critical','high','medium','low'];
+const LEVEL_WEIGHTS = [0.35,0.30,0.25,0.10];
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', function() {
+    initWorldMap();
+    generateHourlyHeatmap();
+    generateAlerts();
+    startRealTimeUpdates();
+    // Carga de datos reales desde la API
+    loadDashboardData();
+});
+
+// ==================== CARGA DE DATOS REALES ====================
+async function loadDashboardData() {
+    try {
+        const [statsRes, actorsStatsRes, actorsRes] = await Promise.all([
+            fetch('/api/dashboard/stats'),
+            fetch('/api/actors/stats'),
+            fetch('/api/actors?status=active&limit=100')
+        ]);
+        const stats     = await statsRes.json();
+        const acStats   = await actorsStatsRes.json();
+        const actorsData = await actorsRes.json();
+
+        if (stats.success) updateKPIs(stats);
+        if (acStats.success) {
+            updateCountriesChart(acStats.data.by_country);
+            updateRiskScore(acStats.data.by_country, actorsData.data || []);
+            updateTopCountriesRow(acStats.data.by_country);
+        }
+        if (actorsData.success) {
+            updateCampaigns(actorsData.data);
+            updateSectorsChart(actorsData.data);
+        }
+
+        document.getElementById('lastUpdate').textContent =
+            'Actualizado: ' + new Date().toLocaleTimeString('es-CL');
+    } catch (err) {
+        console.error('Error cargando datos:', err);
+        document.getElementById('lastUpdate').textContent = 'Error al cargar datos';
+    }
+}
+
+// ---- KPIs ----
+function updateKPIs(data) {
+    const s = data.stats;
+    // Actores
+    document.getElementById('monitoredActors').textContent = s.total_actors;
+    document.getElementById('activeActorsLabel').textContent = `${s.active_ransomware} activos · ${s.total_actors - s.active_ransomware} inactivos/disruptados`;
+    document.getElementById('actorsBar').style.width = Math.min(100, s.total_actors) + '%';
+
+    // Ransomware activos
+    document.getElementById('activeRansomware').textContent = s.active_ransomware;
+    const rPct = s.total_actors > 0 ? Math.round((s.active_ransomware / s.total_actors) * 100) : 0;
+    document.getElementById('ransomLabel').textContent = `${rPct}% del total monitoreado`;
+    document.getElementById('ransomBar').style.width = rPct + '%';
+
+    // Hashes
+    document.getElementById('iocsDetected').textContent = s.total_hashes || 0;
+    document.getElementById('hashLabel').textContent = 'hashes en base de datos';
+    document.getElementById('hashBar').style.width = Math.min(100, (s.total_hashes || 0) * 10) + '%';
+
+    // Herramientas
+    document.getElementById('totalTools').textContent = s.total_tools;
+    document.getElementById('toolsLabel').textContent = `${s.total_tools} herramientas OSINT catalogadas`;
+    document.getElementById('toolsBar').style.width = Math.min(100, Math.round(s.total_tools / 1.5)) + '%';
+
+    // Cyber Weather dinámico
+    const riskScore = Math.min(10, ((s.active_ransomware * 0.15) + (s.total_actors * 0.03))).toFixed(1);
+    document.getElementById('weatherScore').textContent = riskScore + '/10';
+    const level = riskScore >= 8 ? 'TORMENTA' : riskScore >= 6 ? 'ALERTA' : riskScore >= 4 ? 'ELEVADO' : 'MODERADO';
+    document.querySelector('#cyberWeather h4').textContent = `Clima Cibernético Global: ${level}`;
+    document.getElementById('weatherDesc').textContent =
+        `${s.active_ransomware} grupos ransomware activos · ${s.total_actors} actores monitoreados · ${s.total_tools} herramientas disponibles`;
+    document.querySelector('#cyberWeather .weather-icon i').className =
+        riskScore >= 7 ? 'fas fa-bolt text-warning' : 'fas fa-cloud-rain text-light';
+}
+
+// ---- Gráfico países (barra) — datos reales ----
+let countriesChartInstance = null;
+function updateCountriesChart(byCountry) {
+    const top7 = byCountry.slice(0, 7);
+    const labels = top7.map(r => r.country);
+    const data   = top7.map(r => r.count);
+    const colors = ['rgba(220,38,38,0.8)','rgba(245,158,11,0.8)','rgba(59,130,246,0.8)',
+                    'rgba(16,185,129,0.8)','rgba(139,92,246,0.8)','rgba(6,182,212,0.8)','rgba(100,116,139,0.8)'];
+    const ctx = document.getElementById('countriesChart');
+    if (countriesChartInstance) countriesChartInstance.destroy();
+    countriesChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label:'Actores', data, backgroundColor: colors.slice(0, labels.length) }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false},
+            tooltip:{ callbacks:{ label: ctx => ` ${ctx.raw} actores en BD` } } } }
+    });
+}
+
+// ---- Gráfico sectores (doughnut) — datos reales ----
+let sectorsChartInstance = null;
+function updateSectorsChart(actors) {
+    const sectorCount = {};
+    actors.forEach(actor => {
+        let industries = [];
+        try { industries = typeof actor.target_industries === 'string'
+            ? JSON.parse(actor.target_industries) : (actor.target_industries || []);
+        } catch(e) {}
+        industries.forEach(ind => {
+            const key = translateSector(ind);
+            sectorCount[key] = (sectorCount[key] || 0) + 1;
+        });
+    });
+    // Ordenar y tomar top 6
+    const sorted = Object.entries(sectorCount).sort((a,b) => b[1]-a[1]).slice(0, 6);
+    const labels = sorted.map(s => s[0]);
+    const data   = sorted.map(s => s[1]);
+    const colors = ['#dc2626','#f59e0b','#3b82f6','#10b981','#8b5cf6','#6b7280'];
+    const ctx = document.getElementById('sectorsChart');
+    if (sectorsChartInstance) sectorsChartInstance.destroy();
+    sectorsChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length) }] },
+        options: { responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ position:'right', labels:{ font:{ size:11 } } },
+                tooltip:{ callbacks:{ label: ctx => ` ${ctx.raw} actores apuntan a ${ctx.label}` } } } }
+    });
+}
+
+function translateSector(s) {
+    const map = { healthcare:'Salud', finance:'Finanzas', government:'Gobierno',
+        education:'Educación', manufacturing:'Manufactura', technology:'Tecnología',
+        energy:'Energía', defense:'Defensa', retail:'Retail', legal:'Legal',
+        transportation:'Transporte', banking:'Banca', crypto:'Cripto',
+        critical_infrastructure:'Infraestructura', diplomatic:'Diplomacia',
+        think_tanks:'Think Tanks', human_rights:'DDHH', media:'Medios',
+        aviation:'Aviación', pharmaceutical:'Farmacia', investment:'Inversión',
+        telecommunications:'Telecomunicaciones', cloud:'Cloud', real_estate:'Inmobiliario',
+        construction:'Construcción', professional_services:'Servicios Prof.' };
+    return map[s] || s;
+}
+
+// ---- Fila top países (texto) ----
+function updateTopCountriesRow(byCountry) {
+    const top4 = byCountry.slice(0, 4);
+    const total = byCountry.reduce((s, r) => s + r.count, 0);
+    const colors = ['text-danger','text-warning','text-info','text-success'];
+    const row = top4.map((r, i) => {
+        const pct = total > 0 ? Math.round((r.count / total) * 100) : 0;
+        return `<div class="col"><small class="text-muted d-block">${i===0?'Top Origen':i===1?'Segundo':i===2?'Tercero':'Cuarto'}</small>
+            <span class="fw-bold ${colors[i]}">${r.country} (${pct}%)</span></div>`;
+    }).join('');
+    document.getElementById('topCountriesRow').innerHTML = `<div class="row text-center">${row}</div>`;
+}
+
+// ---- Score de Riesgo Predictivo — datos reales ----
+const FLAG_MAP = {
+    'Rusia':'🇷🇺','Russia':'🇷🇺','China':'🇨🇳','Corea del Norte':'🇰🇵','North Korea':'🇰🇵',
+    'Irán':'🇮🇷','Iran':'🇮🇷','Bielorrusia':'🇧🇾','Belarus':'🇧🇾','Corea del Norte':'🇰🇵',
+    'Vietnam':'🇻🇳','Estados Unidos':'🇺🇸','United States':'🇺🇸','India':'🇮🇳',
+    'Desconocido':'🌐','Unknown':'🌐'
+};
+let riskDataReal = [];
+let riskSecs = 60;
+
+function updateRiskScore(byCountry, actors) {
+    // Calcular score por país: (actores activos / total actores del país) * peso
+    const activeByCountry = {};
+    actors.filter(a => a.status === 'active').forEach(a => {
+        activeByCountry[a.country] = (activeByCountry[a.country] || 0) + 1;
+    });
+
+    riskDataReal = byCountry.slice(0, 5).map(r => {
+        const active = activeByCountry[r.country] || 0;
+        const baseScore = Math.min(99, Math.round(20 + (r.count * 12) + (active * 8)));
+        const flag = FLAG_MAP[r.country] || '🌐';
+        const etaH = +(Math.max(0.5, 6 - r.count * 0.4)).toFixed(1);
+        return {
+            name: r.country, flag, count: r.count,
+            active, score: baseScore,
+            trend: active > 0 ? 'up' : 'stable',
+            trendVal: active > 0 ? `+${active} activos` : '±estable',
+            eta: etaH + 'h', etaWarn: etaH < 2
+        };
+    });
+    renderRiskList();
+    initRiskCountdown();
+}
+
+function getRiskLvlClass(s) { return s>=80?'lvl-critical':s>=60?'lvl-high':'lvl-elevated'; }
+function getRiskColor(s)     { return s>=80?'#ef4444':s>=60?'#f59e0b':'#3b82f6'; }
+
+function renderRiskList() {
+    if (!riskDataReal.length) return;
+    document.getElementById('riskList').innerHTML = riskDataReal.map((c, i) => {
+        const s = Math.min(99, Math.max(20, c.score + Math.floor((Math.random()-0.5)*3)));
+        const col = getRiskColor(s);
+        const lvl = getRiskLvlClass(s);
+        const trendCls = c.trend === 'up' ? 'up' : c.trend === 'down' ? 'down' : 'stable';
+        const trendIco = c.trend === 'up' ? '▲' : c.trend === 'down' ? '▼' : '●';
+        return `
+        <div class="risk-item ${lvl}">
+            <div class="risk-rank">${i+1}</div>
+            <div class="risk-flag">${c.flag}</div>
+            <div class="risk-body">
+                <div class="risk-country-name">${c.name}</div>
+                <div class="risk-bar-row">
+                    <div class="risk-bar-track">
+                        <div class="risk-bar-fill" style="width:${s}%;background:linear-gradient(90deg,${col}55,${col})"></div>
+                    </div>
+                    <div class="risk-score-num" style="color:${col}">${s}</div>
+                </div>
+                <div class="risk-meta-row">
+                    <div class="risk-eta ${c.etaWarn?'warn':''}">
+                        <i class="fas fa-users" style="font-size:0.55rem;"></i>
+                        ${c.count} actores · ${c.active} activos
+                    </div>
+                    <div class="risk-trend-badge ${trendCls}">${trendIco} ${c.trendVal}</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function initRiskCountdown() {
+    if (window._riskInterval) clearInterval(window._riskInterval);
+    riskSecs = 60;
+    window._riskInterval = setInterval(() => {
+        riskSecs--;
+        if (riskSecs <= 0) { riskSecs = 60; loadDashboardData(); }
+        document.getElementById('riskCountdown').textContent = `actualiza en ${riskSecs}s`;
+    }, 1000);
+}
+
+// ---- Campañas = Actores activos reales ----
+const TYPE_ICON = {ransomware:'fa-lock',apt:'fa-user-secret',ddos:'fa-server',phishing:'fa-envelope',malware:'fa-bug'};
+
+function inferType(actor) {
+    const desc = (actor.description || '').toLowerCase();
+    const name = (actor.name || '').toLowerCase();
+    if (desc.includes('ransomware') || name.includes('lockbit') || name.includes('clop') || name.includes('akira')) return 'ransomware';
+    if (desc.includes('apt') || name.includes('apt') || name.includes('lazarus') || name.includes('charming')) return 'apt';
+    if (desc.includes('phishing')) return 'phishing';
+    if (desc.includes('ddos')) return 'ddos';
+    return 'malware';
+}
+
+function inferSeverity(actor) {
+    if (actor.threat_level) {
+        if (actor.threat_level === 'critical') return 'critical';
+        if (actor.threat_level === 'high') return 'high';
+    }
+    const type = inferType(actor);
+    if (type === 'ransomware') return 'critical';
+    if (type === 'apt') return 'high';
+    return 'medium';
+}
+
+function updateCampaigns(actors) {
+    const active = actors.filter(a => a.status === 'active').slice(0, 7);
+    document.getElementById('campCount').textContent = active.length;
+
+    if (!active.length) {
+        document.getElementById('campList').innerHTML = '<div class="text-center py-4 text-muted">Sin actores activos</div>';
+        return;
+    }
+
+    document.getElementById('campList').innerHTML = active.map((actor, idx) => {
+        const type   = inferType(actor);
+        const sev    = inferSeverity(actor);
+        const col    = sev === 'critical' ? '#dc2626' : sev === 'high' ? '#f59e0b' : '#3b82f6';
+        const pillCls = `pill-${sev}`;
+        const fillCls = `fill-${sev}`;
+        const icon   = TYPE_ICON[type] || 'fa-shield';
+
+        // Simular progreso de campaña basado en last_seen vs first_seen
+        const first = actor.first_seen ? new Date(actor.first_seen) : new Date('2020-01-01');
+        const last  = actor.last_seen  ? new Date(actor.last_seen)  : new Date();
+        const diffDays = Math.max(1, Math.round((last - first) / (1000*60*60*24)));
+        const elapsedDays = Math.min(diffDays, Math.round(diffDays * 0.7));
+        const pct  = Math.min(95, Math.round((elapsedDays / diffDays) * 100));
+
+        // Aliases y técnicas como tags
+        let tags = [];
+        try { tags = (typeof actor.aliases === 'string' ? JSON.parse(actor.aliases) : (actor.aliases || [])).slice(0, 2); } catch(e){}
+        let techs = [];
+        try { techs = (typeof actor.mitre_techniques === 'string' ? JSON.parse(actor.mitre_techniques) : (actor.mitre_techniques || [])).slice(0, 2); } catch(e){}
+        const allTags = [...tags, ...techs].slice(0, 3);
+
+        let targets = [];
+        try { targets = (typeof actor.target_industries === 'string' ? JSON.parse(actor.target_industries) : (actor.target_industries || [])).slice(0,2).map(translateSector); } catch(e){}
+
+        const isNew = idx === 0;
+        const opName = actor.name.toUpperCase().replace(/\s+/g,'-').substring(0, 16);
+
+        return `
+        <div class="campaign-item sev-${sev}">
+            ${isNew ? '<span class="camp-new">reciente</span>' : ''}
+            <div class="camp-top">
+                <div class="camp-name">
+                    <i class="fas ${icon} me-1" style="color:${col};font-size:0.72rem;"></i>${opName}
+                </div>
+                <span class="camp-sev-pill ${pillCls}">${sev}</span>
+            </div>
+            <div class="camp-meta">
+                <div class="camp-meta-item"><i class="fas fa-map-marker-alt"></i>${actor.country || 'Desconocido'}</div>
+                ${targets.length ? `<div class="camp-meta-item"><i class="fas fa-crosshairs"></i>${targets.join(', ')}</div>` : ''}
+                <div class="camp-meta-item"><i class="fas fa-calendar"></i>desde ${actor.first_seen || 'n/d'}</div>
+            </div>
+            <div class="camp-progress-label">
+                <span>Actividad documentada</span>
+                <span class="pct" style="color:${col}">${pct}% del período</span>
+            </div>
+            <div class="camp-track">
+                <div class="camp-fill ${fillCls}" style="width:${pct}%"></div>
+            </div>
+            <div class="camp-timeline">
+                <span>${actor.first_seen || 'inicio'}</span>
+                <div class="camp-timeline-track"><div class="camp-timeline-fill" style="width:${pct}%"></div></div>
+                <span>${actor.last_seen || 'hoy'}</span>
+            </div>
+            ${allTags.length ? `<div class="camp-tags">${allTags.map(t=>`<span class="camp-tag">${t}</span>`).join('')}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+// ==================== MAPA D3 ====================
+function initWorldMap() {
+    const container = document.getElementById('threatMap');
+    mapWidth = container.offsetWidth; mapHeight = container.offsetHeight;
+    const svg = d3.select('#worldMapSvg').attr('width',mapWidth).attr('height',mapHeight);
+    _mapSvg = svg;
+    const mapGroup = svg.append('g').attr('id','mapGroup');
+    _mapGroup = mapGroup;
+    projection = d3.geoNaturalEarth1().scale(mapWidth/6.2).translate([mapWidth/2,mapHeight/2]);
+    pathGenerator = d3.geoPath().projection(projection);
+    mapGroup.append('path').datum({type:'Sphere'}).attr('class','sphere').attr('d',pathGenerator);
+    mapGroup.append('path').datum(d3.geoGraticule()()).attr('class','graticule').attr('d',pathGenerator);
+    const zoom = d3.zoom().scaleExtent([1,12]).on('zoom',(event)=>{
+        currentZoomTransform = event.transform;
+        const {k,x,y} = event.transform;
+        mapGroup.attr('transform',event.transform);
+        document.getElementById('threatsLayer').style.transform=`translate(${x}px,${y}px) scale(${k})`;
+        document.getElementById('attackCanvas').style.transform=`translate(${x}px,${y}px) scale(${k})`;
+        document.getElementById('zoomIndicator').textContent=`ZOOM ${k.toFixed(1)}x`;
+        mapGroup.selectAll('.country').attr('stroke-width',0.5/k);
+    });
+    _mapZoom = zoom; svg.call(zoom);
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+        .then(r=>r.json()).then(world=>{
+            const countries = topojson.feature(world,world.objects.countries);
+            mapGroup.selectAll('.country').data(countries.features).enter().append('path')
+                .attr('class','country').attr('d',pathGenerator)
+                .on('mouseover',function(){ d3.select(this).attr('fill','#1e4a7a'); })
+                .on('mouseout', function(){ d3.select(this).attr('fill','#0e2240'); });
+            mapGroup.append('path').datum(topojson.mesh(world,world.objects.countries,(a,b)=>a!==b))
+                .attr('fill','none').attr('stroke','#1a4a7a').attr('stroke-width','0.4').attr('d',pathGenerator);
+            generateThreats(); initAttackCanvas();
+            window.addEventListener('resize',()=>{
+                mapWidth=container.offsetWidth; mapHeight=container.offsetHeight;
+                svg.attr('width',mapWidth).attr('height',mapHeight);
+                projection.scale(mapWidth/6.2).translate([mapWidth/2,mapHeight/2]);
+                mapGroup.selectAll('path').attr('d',pathGenerator);
+                svg.call(zoom.transform,d3.zoomIdentity);
+                regenerateThreats();
+            });
+        }).catch(()=>{ drawFallbackMap(mapGroup); generateThreats(); initAttackCanvas(); });
+}
+function zoomIn()    { _mapSvg.transition().duration(350).call(_mapZoom.scaleBy,1.6); }
+function zoomOut()   { _mapSvg.transition().duration(350).call(_mapZoom.scaleBy,0.625); }
+function zoomReset() { _mapSvg.transition().duration(500).call(_mapZoom.transform,d3.zoomIdentity); }
+function drawFallbackMap(group) {
+    ["M 100,80 L 200,70 L 260,90 L 280,140 L 140,150 L 90,130 Z","M 220,155 L 280,160 L 270,250 L 220,250 L 200,220 Z",
+     "M 450,80 L 560,90 L 530,150 L 445,120 Z","M 560,80 L 900,80 L 880,160 L 555,110 Z",
+     "M 640,150 L 800,220 L 680,235 L 645,200 Z","M 770,280 L 920,330 L 780,390 L 760,340 Z"]
+    .forEach(d=>group.append('path').attr('d',d).attr('class','country'));
+}
+function generateThreats() {
+    const container = document.getElementById('threatsLayer');
+    container.innerHTML=''; threats=[];
+    let critical=0,high=0,medium=0;
+    for(let i=0;i<THREAT_COUNT;i++){
+        const country=selectWeightedCountry(), level=selectWeightedLevel();
+        const type=THREAT_TYPES[Math.floor(Math.random()*THREAT_TYPES.length)];
+        const spread=4+Math.random()*4, angle=Math.random()*Math.PI*2;
+        const geoCoord=[country.lon+Math.cos(angle)*spread*(Math.random()*0.8+0.2),country.lat+Math.sin(angle)*spread*0.6*(Math.random()*0.8+0.2)];
+        const projected=projection(geoCoord);
+        if(!projected||projected[0]<5||projected[0]>mapWidth-5||projected[1]<5||projected[1]>mapHeight-5) continue;
+        if(level==='critical')critical++;else if(level==='high')high++;else if(level==='medium')medium++;
+        const threat={id:i,px:projected[0],py:projected[1],lon:geoCoord[0],lat:geoCoord[1],level,type,country:country.name,intensity:Math.random()};
+        threats.push(threat);
+        const dot=document.createElement('div');
+        dot.className=`threat-dot threat-${level}`;
+        dot.style.left=projected[0]+'px'; dot.style.top=projected[1]+'px';
+        dot.style.animationDelay=(Math.random()*3)+'s'; dot.dataset.id=i;
+        dot.addEventListener('mouseenter',(e)=>showTooltip(e,threat));
+        dot.addEventListener('mouseleave',hideTooltip);
+        container.appendChild(dot);
+    }
+    document.getElementById('criticalCount').textContent=critical;
+    document.getElementById('highCount').textContent=high;
+    document.getElementById('mediumCount').textContent=medium;
+}
+function regenerateThreats() { if(projection) generateThreats(); }
+function initAttackCanvas() {
+    const canvas=document.getElementById('attackCanvas');
+    canvas.width=mapWidth; canvas.height=mapHeight;
+    window.addEventListener('resize',()=>{canvas.width=mapWidth;canvas.height=mapHeight;});
+    const ctx=canvas.getContext('2d'), arcs=[];
+    function createArc(){
+        if(threats.length<2) return null;
+        const src=threats[Math.floor(Math.random()*threats.length)];
+        const dst=threats[Math.floor(Math.random()*threats.length)];
+        if(src.id===dst.id) return null;
+        return{x1:src.px,y1:src.py,x2:dst.px,y2:dst.py,level:src.level,progress:0,speed:0.014+Math.random()*0.01,
+            color:src.level==='critical'?'#ff3333':src.level==='high'?'#f59e0b':src.level==='medium'?'#3b82f6':'#10b981',
+            width:src.level==='critical'?1.5:1,active:false,nextActivation:Math.random()*200};
+    }
+    for(let i=0;i<70;i++){const a=createArc();if(a)arcs.push(a);}
+    function drawFrame(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        arcs.forEach(arc=>{
+            if(!arc.active){arc.nextActivation--;if(arc.nextActivation<=0){arc.active=true;arc.progress=0;}return;}
+            const dx=arc.x2-arc.x1,dy=arc.y2-arc.y1,dist=Math.sqrt(dx*dx+dy*dy);
+            const cpx=(arc.x1+arc.x2)/2,cpy=(arc.y1+arc.y2)/2-dist*0.4;
+            const t=arc.progress;
+            const curX=(1-t)*(1-t)*arc.x1+2*(1-t)*t*cpx+t*t*arc.x2;
+            const curY=(1-t)*(1-t)*arc.y1+2*(1-t)*t*cpy+t*t*arc.y2;
+            ctx.beginPath();
+            for(let s=0;s<=40;s++){
+                const st=(arc.progress-0.25)+(0.25*s/40);
+                if(st<0||st>1)continue;
+                const bx=(1-st)*(1-st)*arc.x1+2*(1-st)*st*cpx+st*st*arc.x2;
+                const by=(1-st)*(1-st)*arc.y1+2*(1-st)*st*cpy+st*st*arc.y2;
+                if(s===0)ctx.moveTo(bx,by);else ctx.lineTo(bx,by);
+            }
+            ctx.lineWidth=arc.width;ctx.strokeStyle=arc.color+'99';ctx.stroke();
+            ctx.beginPath();ctx.arc(curX,curY,arc.level==='critical'?4:3,0,Math.PI*2);
+            ctx.fillStyle=arc.color;ctx.shadowBlur=12;ctx.shadowColor=arc.color;ctx.fill();ctx.shadowBlur=0;
+            arc.progress+=arc.speed;
+            if(arc.progress>=1){
+                arc.active=false;const n=createArc();
+                if(n){arc.x1=n.x1;arc.y1=n.y1;arc.x2=n.x2;arc.y2=n.y2;arc.color=n.color;arc.width=n.width;arc.level=n.level;}
+                arc.nextActivation=40+Math.random()*120;
+            }
+        });
+        requestAnimationFrame(drawFrame);
+    }
+    drawFrame();
+}
+function selectWeightedCountry(){const total=COUNTRY_DATA.reduce((s,c)=>s+c.weight,0);let r=Math.random()*total;for(const c of COUNTRY_DATA){r-=c.weight;if(r<=0)return c;}return COUNTRY_DATA[0];}
+function selectWeightedLevel(){let r=Math.random(),cum=0;for(let i=0;i<LEVELS.length;i++){cum+=LEVEL_WEIGHTS[i];if(r<=cum)return LEVELS[i];}return LEVELS[LEVELS.length-1];}
+function filterThreats(type){
+    activeFilter=type;
+    document.querySelectorAll('.filter-btn').forEach(btn=>{
+        const t=btn.textContent.trim().toLowerCase();
+        btn.classList.toggle('active',(type==='all'&&t==='todas')||t===type);
+    });
+    document.querySelectorAll('.threat-dot').forEach((dot,index)=>{
+        if(index>=threats.length)return;
+        dot.style.display=(type==='all'||threats[index].type===type)?'block':'none';
+    });
+}
+function showTooltip(e,threat){
+    hideTooltip();
+    const t=document.createElement('div');
+    t.className='map-tooltip';t.id='active-tooltip';
+    const lc={critical:'#ff2222',high:'#f59e0b',medium:'#3b82f6',low:'#10b981'}[threat.level];
+    t.innerHTML=`<div class="tooltip-country" style="color:${lc}">${threat.country}</div>
+        <div class="tooltip-row"><span>Nivel</span><span class="tooltip-val" style="color:${lc}">${threat.level.toUpperCase()}</span></div>
+        <div class="tooltip-row"><span>Tipo</span><span class="tooltip-val">${threat.type.toUpperCase()}</span></div>
+        <div class="tooltip-row"><span>Intensidad</span><span class="tooltip-val">${(threat.intensity*100).toFixed(0)}%</span></div>
+        <div style="margin-top:4px;font-size:0.72rem;color:#475569">ID: THREAT-${String(threat.id).padStart(4,'0')}</div>`;
+    document.body.appendChild(t);
+    const rect=e.target.getBoundingClientRect();
+    t.style.left=(rect.left+rect.width/2-t.offsetWidth/2)+'px';
+    t.style.top=(rect.top-t.offsetHeight-12)+'px';
+}
+function hideTooltip(){const e=document.getElementById('active-tooltip');if(e)e.remove();}
+
+// ==================== TIEMPO REAL ====================
+function startRealTimeUpdates(){
+    setInterval(()=>{
+        document.getElementById('liveAttacks').textContent=Math.floor(Math.random()*200)+300;
+        document.getElementById('connectionsPerSec').textContent=(Math.floor(Math.random()*1000)+2000).toLocaleString();
+        document.getElementById('affectedCountries').textContent=Math.floor(Math.random()*20)+35;
+        if(Math.random()>0.85) addRandomAlert();
+    },2500);
+}
+
+// ==================== ALERTAS (simuladas — basadas en actores reales) ====================
+function generateAlerts(){
+    const alerts=[
+        {type:'critical',icon:'fa-skull',title:'LockBit 3.0 Activity',desc:'Ransomware activo detectado en tu BD · sector salud',time:'2 min'},
+        {type:'critical',icon:'fa-user-secret',title:'APT29 (Cozy Bear)',desc:'Actor activo en BD · objetivo: gobierno',time:'5 min'},
+        {type:'high',icon:'fa-user-secret',title:'Lazarus Group',desc:'Actor DPRK activo · objetivo: banca/cripto',time:'11 min'},
+        {type:'high',icon:'fa-network-wired',title:'APT41 Winnti',desc:'Doble misión espionaje+crimen · tecnología',time:'18 min'},
+        {type:'medium',icon:'fa-envelope',title:'FIN7 Campaign',desc:'Actor financiero activo · sector retail',time:'25 min'},
+    ];
+    document.getElementById('alertFeed').innerHTML=alerts.map(a=>createAlertHTML(a)).join('');
+}
+function createAlertHTML(a){
+    return `<div class="alert-item alert-${a.type}"><div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex gap-2"><i class="fas ${a.icon} mt-1 text-${a.type==='critical'?'danger':a.type==='high'?'warning':'info'}"></i>
+        <div><h6 class="mb-1 fw-bold">${a.title}</h6><p class="mb-0 small text-muted">${a.desc}</p></div></div>
+        <small class="text-muted">${a.time}</small></div></div>`;
+}
+function addRandomAlert(){
+    const alerts=[
+        {type:'critical',icon:'fa-radiation',title:'BlackBasta Detected',desc:'Nuevo indicador de compromiso en sector financiero'},
+        {type:'high',icon:'fa-virus',title:'ALPHV/BlackCat',desc:'Ransomware en Rust detectado · objetivo: salud'},
+        {type:'medium',icon:'fa-shield-virus',title:'Akira Recon',desc:'Reconocimiento de activo activo en BD'}
+    ];
+    const a=alerts[Math.floor(Math.random()*alerts.length)];
+    const container=document.getElementById('alertFeed');
+    const div=document.createElement('div');div.innerHTML=createAlertHTML({...a,time:'ahora'});
+    container.insertBefore(div.firstElementChild,container.firstChild);
+    if(container.children.length>10)container.removeChild(container.lastChild);
+}
+
+// ==================== CHARTS SIMULADOS ====================
+let hourlyChartInstance=null, hourlyDataHoy=null, hourlyDataAyer=null;
+const ATTACK_COLORS={ransomware:{border:'#dc2626',bg:'rgba(220,38,38,0.75)'},apt:{border:'#f59e0b',bg:'rgba(245,158,11,0.75)'},ddos:{border:'#3b82f6',bg:'rgba(59,130,246,0.75)'},phishing:{border:'#10b981',bg:'rgba(16,185,129,0.75)'},malware:{border:'#8b5cf6',bg:'rgba(139,92,246,0.75)'}};
+
+function generateHourlyData(seed){
+    const base=[30,45,80,90,50,35,55,90,180,280,320,350,310,340,360,320,290,260,210,170,130,100,75,50];
+    const data={};
+    ['ransomware','apt','ddos','phishing','malware'].forEach(t=>{
+        data[t]=base.map((b,i)=>Math.max(0,Math.round(b*(Math.sin(i*seed+seed)*0.3+1)*{ransomware:0.28,apt:0.22,ddos:0.20,phishing:0.18,malware:0.12}[t]*(0.85+Math.random()*0.3))));
+    });
+    return data;
+}
+function calcHourlyStats(data){
+    const totals=Array.from({length:24},(_,h)=>Object.values(data).reduce((s,a)=>s+a[h],0));
+    return{totals,peakIdx:totals.indexOf(Math.max(...totals)),avg:Math.round(totals.reduce((a,b)=>a+b,0)/24)};
+}
+function generateHourlyHeatmap(){
+    Chart.defaults.color='#64748b'; Chart.defaults.borderColor='#e2e8f0';
+    hourlyDataHoy=generateHourlyData(1.0); hourlyDataAyer=generateHourlyData(1.7);
+    const sh=calcHourlyStats(hourlyDataHoy), sa=calcHourlyStats(hourlyDataAyer);
+    document.getElementById('peakHour').textContent=`${String(sh.peakIdx).padStart(2,'0')}:00`;
+    document.getElementById('avgPerHour').textContent=sh.avg.toLocaleString();
+    const diff=Math.round(((sh.avg-sa.avg)/sa.avg)*100);
+    const vsEl=document.getElementById('vsYesterday');
+    vsEl.textContent=(diff>=0?'+':'')+diff+'%'; vsEl.style.color=diff>=0?'#dc2626':'#10b981';
+    const types=['ransomware','apt','ddos','phishing','malware'];
+    const labels=Array.from({length:24},(_,h)=>`${String(h).padStart(2,'0')}h`);
+    const datasets=types.map(t=>({label:t.charAt(0).toUpperCase()+t.slice(1),data:hourlyDataHoy[t],borderColor:ATTACK_COLORS[t].border,backgroundColor:ATTACK_COLORS[t].bg,borderWidth:1.5,fill:true,tension:0.4,pointRadius:0,pointHoverRadius:5}));
+    datasets.push({label:'Ayer (total)',data:sa.totals,borderColor:'rgba(148,163,184,0.7)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],fill:false,tension:0.4,pointRadius:0,order:-1,type:'line'});
+    const ctx=document.getElementById('hourlyAreaChart').getContext('2d');
+    if(hourlyChartInstance)hourlyChartInstance.destroy();
+    hourlyChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{stacked:true,grid:{color:'rgba(226,232,240,0.5)',drawTicks:false},ticks:{color:'#94a3b8',font:{size:9},maxTicksLimit:8,maxRotation:0}},y:{stacked:true,grid:{color:'rgba(226,232,240,0.5)',drawTicks:false},ticks:{color:'#94a3b8',font:{size:9},maxTicksLimit:5,callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}}},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,23,42,0.95)',titleColor:'#e2e8f0',bodyColor:'#94a3b8',borderColor:'#334155',borderWidth:1,padding:10}}}});
+    buildDominantTypeBar(hourlyDataHoy);
+
+    // Tendencia (simulada)
+    new Chart(document.getElementById('trendChart'),{type:'line',data:{labels:Array.from({length:30},(_,i)=>`${i+1}`),datasets:[{label:'Actores Monitoreados',data:Array.from({length:30},()=>Math.floor(Math.random()*10)+40),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,0.1)',fill:true,tension:0.4},{label:'Nuevos IOCs',data:Array.from({length:30},()=>Math.floor(Math.random()*5)+1),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'}}});
+}
+function buildDominantTypeBar(data){
+    const bar=document.getElementById('dominantTypeBar');bar.innerHTML='';
+    const types=['ransomware','apt','ddos','phishing','malware'];
+    for(let h=0;h<24;h++){
+        let maxVal=0,dominant='ransomware';
+        types.forEach(t=>{if(data[t][h]>maxVal){maxVal=data[t][h];dominant=t;}});
+        const seg=document.createElement('div');
+        seg.style.cssText=`flex:1;background:${ATTACK_COLORS[dominant].border};border-radius:1px;cursor:pointer;transition:opacity 0.2s;`;
+        seg.title=`${String(h).padStart(2,'0')}:00 — ${dominant.toUpperCase()}`;
+        seg.addEventListener('mouseenter',()=>seg.style.opacity='0.7');
+        seg.addEventListener('mouseleave',()=>seg.style.opacity='1');
+        bar.appendChild(seg);
+    }
+}
+function switchHourView(view){
+    const data=view==='hoy'?hourlyDataHoy:hourlyDataAyer;
+    const stats=calcHourlyStats(data);
+    const statsOtro=calcHourlyStats(view==='hoy'?hourlyDataAyer:hourlyDataHoy);
+    document.getElementById('peakHour').textContent=`${String(stats.peakIdx).padStart(2,'0')}:00`;
+    document.getElementById('avgPerHour').textContent=stats.avg.toLocaleString();
+    const diff=Math.round(((stats.avg-statsOtro.avg)/statsOtro.avg)*100);
+    const vsEl=document.getElementById('vsYesterday');
+    vsEl.textContent=(diff>=0?'+':'')+diff+'%'; vsEl.style.color=diff>=0?'#dc2626':'#10b981';
+    ['ransomware','apt','ddos','phishing','malware'].forEach((t,i)=>{hourlyChartInstance.data.datasets[i].data=data[t];});
+    hourlyChartInstance.data.datasets[5].data=statsOtro.totals;
+    hourlyChartInstance.update('active');
+    buildDominantTypeBar(data);
+    document.getElementById('btnHoy').style.color=view==='hoy'?'#1d4ed8':'#94a3b8';
+    document.getElementById('btnAyer').style.color=view==='ayer'?'#1d4ed8':'#94a3b8';
+    document.getElementById('btnHoy').style.background=view==='hoy'?'#dbeafe':'#f1f5f9';
+    document.getElementById('btnAyer').style.background=view==='ayer'?'#dbeafe':'#f1f5f9';
+}
+
+function exportDashboard(format){alert(`Exportando dashboard en formato ${format.toUpperCase()}...`);}
+function toggleFullscreen(){
+    if(!document.fullscreenElement)document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+}
+</script>
+{% endblock %}

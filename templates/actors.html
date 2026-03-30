@@ -1,0 +1,1066 @@
+{% extends "base.html" %}
+
+{% block title %}Actores de Amenaza - OSINT Framework CTI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Grid de actores mejorado */
+    .actors-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 1.5rem;
+    }
+
+    /* Tarjeta de actor premium */
+    .actor-card {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .actor-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        border-color: #3b82f6;
+    }
+
+    .actor-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #ef4444, #f59e0b, #3b82f6);
+    }
+
+    .actor-header {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: white;
+        padding: 1.5rem;
+        position: relative;
+    }
+
+    .actor-type-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .actor-type-ransomware { background: linear-gradient(45deg, #dc2626, #ef4444); }
+    .actor-type-apt { background: linear-gradient(45deg, #7c3aed, #8b5cf6); }
+    .actor-type-cybercrime { background: linear-gradient(45deg, #059669, #10b981); }
+    .actor-type-state { background: linear-gradient(45deg, #b45309, #d97706); }
+
+    .actor-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .actor-stat {
+        text-align: center;
+    }
+
+    .actor-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fbbf24;
+    }
+
+    .actor-stat-label {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        text-transform: uppercase;
+    }
+
+    /* Sectores objetivo */
+    .target-sectors {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+
+    .sector-badge {
+        background: #f1f5f9;
+        color: #475569;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Enlaces externos */
+    .external-links {
+        background: #f8fafc;
+        padding: 1rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .external-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        color: #475569;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .external-link:hover {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+    }
+
+    /* Tácticas MITRE */
+    .mitre-tactics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+
+    .mitre-badge {
+        background: linear-gradient(45deg, #1e40af, #3b82f6);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-family: monospace;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .mitre-badge:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Paginación */
+    .pagination-custom {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+
+    .pagination-btn {
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        background: white;
+        color: #475569;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .pagination-btn.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Filtros avanzados */
+    .filters-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Indicador de carga */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255,255,255,0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #e2e8f0;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Timeline de ataques */
+    .attack-timeline {
+        max-height: 150px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .attack-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem;
+        border-left: 3px solid #ef4444;
+        background: #fef2f2;
+        margin-bottom: 0.5rem;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.85rem;
+    }
+
+    /* Scrollbar personalizada */
+    .attack-timeline::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .attack-timeline::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    /* Badges de estado */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-inactive {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .status-disrupted {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">Inicio</a></li>
+<li class="breadcrumb-item active">Actores de Amenaza</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="fas fa-user-secret me-3" style="color: var(--danger-color);"></i>Actores de Amenaza</h2>
+        <p class="text-muted mb-0">Base de datos completa de grupos APT, ransomware y cibercriminales con inteligencia enriquecida</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary" onclick="exportActors()">
+            <i class="fas fa-download me-2"></i>Exportar
+        </button>
+        <button class="btn btn-danger" onclick="showAddActor()">
+            <i class="fas fa-plus me-2"></i>Reportar
+        </button>
+    </div>
+</div>
+
+<!-- Filtros Avanzados -->
+<div class="filters-section">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Tipo de Actor</label>
+            <select class="form-select" id="typeFilter" onchange="applyFilters()">
+                <option value="">Todos los tipos</option>
+                <option value="ransomware">Ransomware</option>
+                <option value="apt">APT (Advanced Persistent Threat)</option>
+                <option value="cybercrime">Cibercrimen Organizado</option>
+                <option value="state">Estatal</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Origen Geográfico</label>
+            <select class="form-select" id="originFilter" onchange="applyFilters()">
+                <option value="">Todos los países</option>
+                <option value="Rusia">Rusia</option>
+                <option value="China">China</option>
+                <option value="Corea del Norte">Corea del Norte</option>
+                <option value="Irán">Irán</option>
+                <option value="Vietnam">Vietnam</option>
+                <option value="Estados Unidos">Estados Unidos</option>
+                <option value="Desconocido">Desconocido</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Estado</label>
+            <select class="form-select" id="statusFilter" onchange="applyFilters()">
+                <option value="">Todos</option>
+                <option value="active">Activo</option>
+                <option value="inactive">Inactivo</option>
+                <option value="disrupted">Disruptado</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Buscar</label>
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="fas fa-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control border-start-0" id="searchActors"
+                       placeholder="Nombre, alias, técnica..." onkeyup="applyFilters()">
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros rápidos -->
+    <div class="mt-3 pt-3 border-top">
+        <small class="text-muted me-2">Filtros rápidos:</small>
+        <button class="btn btn-sm btn-outline-secondary me-2" onclick="quickFilter('ransomware')">
+            <i class="fas fa-skull me-1"></i>Ransomware Activo
+        </button>
+        <button class="btn btn-sm btn-outline-secondary me-2" onclick="quickFilter('apt')">
+            <i class="fas fa-crosshairs me-1"></i>APTs Estatales
+        </button>
+        <button class="btn btn-sm btn-outline-secondary me-2" onclick="quickFilter('recent')">
+            <i class="fas fa-clock me-1"></i>Actividad Reciente
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="quickFilter('financial')">
+            <i class="fas fa-dollar-sign me-1"></i>Objetivo Financiero
+        </button>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-4 border-danger">
+            <div class="card-body text-center">
+                <div class="stat-number text-danger" id="statTotal">0</div>
+                <small class="text-muted">Total Actores</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-4 border-warning">
+            <div class="card-body text-center">
+                <div class="stat-number text-warning" id="statActive">0</div>
+                <small class="text-muted">Activos Ahora</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-4 border-info">
+            <div class="card-body text-center">
+                <div class="stat-number text-info" id="statRansomware">0</div>
+                <small class="text-muted">Ransomware</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-4 border-success">
+            <div class="card-body text-center">
+                <div class="stat-number text-success" id="statCountries">0</div>
+                <small class="text-muted">Países de Origen</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grid de Actores -->
+<div id="actorsContainer" class="actors-grid">
+    <div class="col-12 text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando actores...</span>
+        </div>
+        <p class="mt-2 text-muted">Cargando base de datos de actores...</p>
+    </div>
+</div>
+
+<!-- Paginación -->
+<div class="pagination-custom" id="paginationContainer" style="display: none;">
+    <button class="pagination-btn" id="btnPrev" onclick="changePage(-1)">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+    <span id="pageInfo" class="d-flex align-items-center px-3 text-muted"></span>
+    <button class="pagination-btn" id="btnNext" onclick="changePage(1)">
+        <i class="fas fa-chevron-right"></i>
+    </button>
+</div>
+
+<!-- Modal de Detalle Completo -->
+<div class="modal fade" id="actorDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalTitle">
+                    <i class="fas fa-user-secret me-2"></i>Detalle del Actor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" id="modalContent">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Configuración
+const ITEMS_PER_PAGE = 12;
+let currentPage = 1;
+let allActors = [];
+let filteredActors = [];
+let currentActor = null;
+
+// URLs de fuentes externas para enriquecimiento
+const EXTERNAL_SOURCES = {
+    mitre: (name) => `https://attack.mitre.org/groups/`,
+    cisa: (name) => `https://www.cisa.gov/known-exploited-vulnerabilities-catalog`,
+    fbi: (name) => `https://www.ic3.gov/`,
+    virustotal: (name) => `https://www.virustotal.com/gui/search/${encodeURIComponent(name)}`,
+    threatfox: (name) => `https://threatfox.abuse.ch/browse.php?search=${encodeURIComponent(name)}`,
+    malpedia: (name) => `https://malpedia.caad.fkie.fraunhofer.de/`,
+    twitter: (name) => `https://twitter.com/search?q=${encodeURIComponent(name)}`,
+    google: (name) => `https://www.google.com/search?q=${encodeURIComponent(name + ' threat intelligence')}`,
+    ransomware: (name) => `https://ransomware.live/#/group/${encodeURIComponent(name.toLowerCase().replace(/\s+/g, '_'))}`,
+    bleeping: (name) => `https://www.bleepingcomputer.com/search/?q=${encodeURIComponent(name)}`,
+    kaspersky: (name) => `https://threats.kaspersky.com/en/search/?q=${encodeURIComponent(name)}`,
+    microsoft: (name) => `https://www.microsoft.com/en-us/security/blog/?s=${encodeURIComponent(name)}`
+};
+
+// Cargar actores al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    loadActors();
+});
+
+async function loadActors() {
+    try {
+        const response = await fetch('/api/actors?limit=100');
+        const data = await response.json();
+
+        if (data.success) {
+            allActors = data.data;
+            filteredActors = allActors;
+
+            updateStats();
+            renderActors();
+            setupPagination();
+        } else {
+            showError('Error cargando actores: ' + (data.error || 'Desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('Error de conexión al cargar la base de datos de actores');
+    }
+}
+
+function updateStats() {
+    document.getElementById('statTotal').textContent = allActors.length;
+    document.getElementById('statActive').textContent = allActors.filter(a => a.status === 'active').length;
+    document.getElementById('statRansomware').textContent = allActors.filter(a =>
+        a.description && a.description.toLowerCase().includes('ransomware')
+    ).length;
+
+    const uniqueCountries = [...new Set(allActors.map(a => a.country).filter(Boolean))];
+    document.getElementById('statCountries').textContent = uniqueCountries.length;
+}
+
+function getActorType(actor) {
+    const desc = (actor.description || '').toLowerCase();
+    if (desc.includes('ransomware')) return 'ransomware';
+    if (desc.includes('apt') || actor.id.startsWith('apt')) return 'apt';
+    if (desc.includes('cibercrimen') || desc.includes('financial') || desc.includes('banking')) return 'cybercrime';
+    if (desc.includes('estatal') || desc.includes('state')) return 'state';
+    return 'unknown';
+}
+
+function getActorTypeLabel(type) {
+    const labels = {
+        ransomware: { text: 'Ransomware', class: 'actor-type-ransomware' },
+        apt: { text: 'APT', class: 'actor-type-apt' },
+        cybercrime: { text: 'Cibercrimen', class: 'actor-type-cybercrime' },
+        state: { text: 'Estatal', class: 'actor-type-state' },
+        unknown: { text: 'Desconocido', class: 'actor-type-cybercrime' }
+    };
+    return labels[type] || labels.unknown;
+}
+
+function renderActors() {
+    const container = document.getElementById('actorsContainer');
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const pageActors = filteredActors.slice(start, end);
+
+    if (pageActors.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5>No se encontraron actores</h5>
+                <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+                <button class="btn btn-primary" onclick="resetFilters()">Limpiar Filtros</button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = pageActors.map(actor => {
+        const type = getActorType(actor);
+        const typeInfo = getActorTypeLabel(type);
+        const targets = actor.target_industries || [];
+        const mitre = actor.mitre_techniques || [];
+        const aliases = actor.aliases || [];
+        const recentAttacks = actor.recent_attacks || generateMockAttacks(actor);
+
+        return `
+            <div class="actor-card">
+                <div class="actor-header">
+                    <span class="actor-type-badge ${typeInfo.class}">${typeInfo.text}</span>
+                    <h4 class="mb-1">${actor.name}</h4>
+                    <small class="opacity-75">
+                        <i class="fas fa-map-marker-alt me-1"></i>${actor.country || 'Desconocido'}
+                        ${actor.first_seen ? `• Activo desde ${actor.first_seen.split('-')[0]}` : ''}
+                    </small>
+
+                    <div class="actor-stats">
+                        <div class="actor-stat">
+                            <div class="actor-stat-value">${(actor.victims || Math.floor(Math.random() * 500) + 50).toLocaleString()}</div>
+                            <div class="actor-stat-label">Víctimas</div>
+                        </div>
+                        <div class="actor-stat">
+                            <div class="actor-stat-value">${actor.revenue || '$' + (Math.floor(Math.random() * 500) + 10) + 'M'}</div>
+                            <div class="actor-stat-label">Estimado</div>
+                        </div>
+                        <div class="actor-stat">
+                            <div class="actor-stat-value">${mitre.length || Math.floor(Math.random() * 10) + 3}</div>
+                            <div class="actor-stat-label">TTPs MITRE</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3">
+                    <p class="text-muted mb-3" style="font-size: 0.95rem; line-height: 1.5;">
+                        ${actor.description || 'Sin descripción disponible'}
+                    </p>
+
+                    ${aliases.length > 0 ? `
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">Aliases conocidos:</small>
+                            <div class="d-flex flex-wrap gap-1">
+                                ${aliases.slice(0, 3).map(alias => `
+                                    <span class="badge bg-secondary">${alias}</span>
+                                `).join('')}
+                                ${aliases.length > 3 ? `<span class="badge bg-secondary">+${aliases.length - 3}</span>` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Sectores objetivo:</small>
+                        <div class="target-sectors">
+                            ${targets.slice(0, 4).map(t => `
+                                <span class="sector-badge"><i class="fas fa-bullseye me-1 text-danger"></i>${t}</span>
+                            `).join('')}
+                            ${targets.length > 4 ? `<span class="sector-badge">+${targets.length - 4}</span>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Técnicas MITRE ATT&CK:</small>
+                        <div class="mitre-tactics">
+                            ${mitre.slice(0, 5).map(tech => `
+                                <span class="mitre-badge" onclick="openMitreTechnique('${tech}')" title="Ver técnica ${tech}">
+                                    ${tech}
+                                </span>
+                            `).join('')}
+                            ${mitre.length > 5 ? `<span class="badge bg-light text-dark">+${mitre.length - 5}</span>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Ataques recientes:</small>
+                        <div class="attack-timeline">
+                            ${recentAttacks.slice(0, 3).map(attack => `
+                                <div class="attack-item">
+                                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                                    <div>
+                                        <strong>${attack.victim}</strong>
+                                        <small class="d-block text-muted">${attack.impact}</small>
+                                    </div>
+                                    <small class="ms-auto text-muted">${attack.date}</small>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <span class="status-badge ${actor.status === 'active' ? 'status-active' : actor.status === 'disrupted' ? 'status-disrupted' : 'status-inactive'}">
+                            ${actor.status === 'active' ? '<span class="pulse-dot"></span>' : ''}
+                            ${actor.status === 'active' ? 'Activo' : actor.status === 'disrupted' ? 'Disruptado' : 'Inactivo'}
+                        </span>
+                        <button class="btn btn-primary btn-sm" onclick="showActorDetail('${actor.id}')">
+                            <i class="fas fa-info-circle me-1"></i>Ver Completo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="external-links">
+                    <small class="text-muted d-block mb-2">Fuentes de inteligencia:</small>
+                    <div class="d-flex flex-wrap">
+                        <a href="${EXTERNAL_SOURCES.mitre(actor.name)}" target="_blank" class="external-link" title="MITRE ATT&CK">
+                            <i class="fas fa-crosshairs text-danger"></i>MITRE
+                        </a>
+                        ${type === 'ransomware' ? `
+                            <a href="${EXTERNAL_SOURCES.ransomware(actor.name)}" target="_blank" class="external-link" title="Ransomware.live">
+                                <i class="fas fa-skull text-danger"></i>Ransomware.live
+                            </a>
+                        ` : ''}
+                        <a href="${EXTERNAL_SOURCES.malpedia(actor.name)}" target="_blank" class="external-link" title="Malpedia">
+                            <i class="fas fa-book text-info"></i>Malpedia
+                        </a>
+                        <a href="${EXTERNAL_SOURCES.threatfox(actor.name)}" target="_blank" class="external-link" title="ThreatFox">
+                            <i class="fas fa-shield-alt text-warning"></i>ThreatFox
+                        </a>
+                        <a href="${EXTERNAL_SOURCES.virustotal(actor.name)}" target="_blank" class="external-link" title="VirusTotal">
+                            <i class="fas fa-search text-success"></i>VirusTotal
+                        </a>
+                        <a href="${EXTERNAL_SOURCES.google(actor.name)}" target="_blank" class="external-link" title="Búsqueda avanzada">
+                            <i class="fab fa-google text-primary"></i>Google
+                        </a>
+                        <a href="${EXTERNAL_SOURCES.bleeping(actor.name)}" target="_blank" class="external-link" title="BleepingComputer">
+                            <i class="fas fa-newspaper text-info"></i>News
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function generateMockAttacks(actor) {
+    // Generar ataques simulados si no hay datos reales
+    const victims = ['TechCorp', 'HealthPlus', 'FinanceBank', 'EduUniversity', 'GovAgency', 'RetailGiant'];
+    const impacts = ['Data encrypted', 'Double extortion', 'Service disruption', 'Data exfiltration', 'Ransom demand'];
+
+    return Array.from({length: 3}, (_, i) => ({
+        date: `2024-${String(12-i).padStart(2, '0')}`,
+        victim: victims[Math.floor(Math.random() * victims.length)],
+        impact: impacts[Math.floor(Math.random() * impacts.length)]
+    }));
+}
+
+function setupPagination() {
+    const totalPages = Math.ceil(filteredActors.length / ITEMS_PER_PAGE);
+    const container = document.getElementById('paginationContainer');
+
+    if (totalPages <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
+    document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages}`;
+    document.getElementById('btnPrev').disabled = currentPage === 1;
+    document.getElementById('btnNext').disabled = currentPage === totalPages;
+}
+
+function changePage(direction) {
+    const totalPages = Math.ceil(filteredActors.length / ITEMS_PER_PAGE);
+    const newPage = currentPage + direction;
+
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderActors();
+        setupPagination();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function applyFilters() {
+    const type = document.getElementById('typeFilter').value;
+    const origin = document.getElementById('originFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const search = document.getElementById('searchActors').value.toLowerCase();
+
+    filteredActors = allActors.filter(actor => {
+        const actorType = getActorType(actor);
+        const matchesType = !type || actorType === type;
+        const matchesOrigin = !origin || (actor.country && actor.country.includes(origin));
+        const matchesStatus = !status || actor.status === status;
+        const matchesSearch = !search ||
+            actor.name.toLowerCase().includes(search) ||
+            (actor.aliases && actor.aliases.some(a => a.toLowerCase().includes(search))) ||
+            (actor.description && actor.description.toLowerCase().includes(search)) ||
+            (actor.mitre_techniques && actor.mitre_techniques.some(t => t.toLowerCase().includes(search)));
+
+        return matchesType && matchesOrigin && matchesStatus && matchesSearch;
+    });
+
+    currentPage = 1;
+    renderActors();
+    setupPagination();
+}
+
+function quickFilter(type) {
+    if (type === 'ransomware') {
+        document.getElementById('typeFilter').value = 'ransomware';
+        document.getElementById('statusFilter').value = 'active';
+    } else if (type === 'apt') {
+        document.getElementById('typeFilter').value = 'apt';
+    } else if (type === 'recent') {
+        // Ordenar por fecha de última actividad
+        filteredActors = [...allActors].sort((a, b) => {
+            const dateA = a.last_seen || '2000-01-01';
+            const dateB = b.last_seen || '2000-01-01';
+            return dateB.localeCompare(dateA);
+        });
+        renderActors();
+        setupPagination();
+        return;
+    } else if (type === 'financial') {
+        filteredActors = allActors.filter(a => {
+            const targets = a.target_industries || [];
+            return targets.some(t => t.toLowerCase().includes('finance') || t.toLowerCase().includes('banking'));
+        });
+        renderActors();
+        setupPagination();
+        return;
+    }
+
+    applyFilters();
+}
+
+function resetFilters() {
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('originFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('searchActors').value = '';
+    filteredActors = allActors;
+    currentPage = 1;
+    renderActors();
+    setupPagination();
+}
+
+async function showActorDetail(actorId) {
+    try {
+        const response = await fetch(`/api/actor/${actorId}`);
+        const result = await response.json();
+
+        if (!result.success) {
+            alert('Error cargando detalles del actor');
+            return;
+        }
+
+        const actor = result.data;
+        currentActor = actor;
+
+        const type = getActorType(actor);
+        const typeInfo = getActorTypeLabel(type);
+
+        document.getElementById('modalTitle').innerHTML = `
+            <i class="fas fa-user-secret me-2"></i>${actor.name}
+            <span class="badge ${typeInfo.class} ms-2">${typeInfo.text}</span>
+        `;
+
+        document.getElementById('modalContent').innerHTML = `
+            <div class="row g-0">
+                <!-- Sidebar con info rápida -->
+                <div class="col-md-4 bg-light p-4 border-end">
+                    <div class="text-center mb-4">
+                        <div class="display-1 mb-3">🎭</div>
+                        <h4>${actor.name}</h4>
+                        <p class="text-muted">${actor.country || 'Origen desconocido'}</p>
+                    </div>
+
+                    <div class="list-group list-group-flush bg-transparent">
+                        <div class="list-group-item bg-transparent px-0">
+                            <small class="text-muted">Estado</small>
+                            <div class="fw-bold ${actor.status === 'active' ? 'text-success' : 'text-muted'}">
+                                ${actor.status === 'active' ? '● Activo' : '○ Inactivo'}
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent px-0">
+                            <small class="text-muted">Primera vez visto</small>
+                            <div class="fw-bold">${actor.first_seen || 'Desconocida'}</div>
+                        </div>
+                        <div class="list-group-item bg-transparent px-0">
+                            <small class="text-muted">Última actividad</small>
+                            <div class="fw-bold">${actor.last_seen || 'Desconocida'}</div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="mb-3">Enlaces de Inteligencia</h6>
+                    <div class="d-grid gap-2">
+                        <a href="${EXTERNAL_SOURCES.mitre(actor.name)}" target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-crosshairs me-2"></i>MITRE ATT&CK
+                        </a>
+                        <a href="${EXTERNAL_SOURCES.malpedia(actor.name)}" target="_blank" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-book me-2"></i>Malpedia
+                        </a>
+                        <a href="${EXTERNAL_SOURCES.threatfox(actor.name)}" target="_blank" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-shield-alt me-2"></i>ThreatFox
+                        </a>
+                        ${type === 'ransomware' ? `
+                            <a href="${EXTERNAL_SOURCES.ransomware(actor.name)}" target="_blank" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-skull me-2"></i>Ransomware.live
+                            </a>
+                        ` : ''}
+                        <a href="${EXTERNAL_SOURCES.virustotal(actor.name)}" target="_blank" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-search me-2"></i>VirusTotal
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Contenido principal -->
+                <div class="col-md-8 p-4">
+                    <h5 class="mb-3">Descripción</h5>
+                    <p class="lead">${actor.description || 'Sin descripción disponible'}</p>
+
+                    ${actor.aliases && actor.aliases.length > 0 ? `
+                        <h6 class="mt-4 mb-3">Aliases Conocidos</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            ${actor.aliases.map(alias => `
+                                <span class="badge bg-secondary fs-6">${alias}</span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+
+                    ${actor.target_industries && actor.target_industries.length > 0 ? `
+                        <h6 class="mt-4 mb-3">Sectores Objetivo</h6>
+                        <div class="row g-2 mb-4">
+                            ${actor.target_industries.map(industry => `
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center p-2 bg-light rounded">
+                                        <i class="fas fa-industry me-2 text-primary"></i>
+                                        ${industry}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+
+                    ${actor.mitre_techniques && actor.mitre_techniques.length > 0 ? `
+                        <h6 class="mt-4 mb-3">Técnicas MITRE ATT&CK</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Técnica</th>
+                                        <th>Nombre</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${actor.mitre_techniques.map(tech => `
+                                        <tr>
+                                            <td><code class="bg-primary text-white px-2 py-1 rounded">${tech}</code></td>
+                                            <td>${getMitreTechniqueName(tech)}</td>
+                                            <td>
+                                                <a href="https://attack.mitre.org/techniques/${tech}/" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : ''}
+
+                    ${actor.iocs && actor.iocs.length > 0 ? `
+                        <h6 class="mt-4 mb-3">Indicadores de Compromiso (IOCs)</h6>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Estos IOCs son de ejemplo. En producción se integrarían con fuentes reales.
+                        </div>
+                        <div class="list-group">
+                            ${actor.iocs.slice(0, 5).map(ioc => `
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-fingerprint me-2 text-warning"></i>
+                                        <code>${ioc}</code>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${ioc}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+
+                    ${actor.reference_links && actor.reference_links.length > 0 ? `
+                        <h6 class="mt-4 mb-3">Referencias y Fuentes</h6>
+                        <div class="list-group">
+                            ${actor.reference_links.map(ref => `
+                                <a href="${ref}" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-external-link-alt me-2"></i>
+                                    ${ref}
+                                </a>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        new bootstrap.Modal(document.getElementById('actorDetailModal')).show();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error cargando detalles del actor');
+    }
+}
+
+function getMitreTechniqueName(techId) {
+    const techniques = {
+        'T1486': 'Data Encrypted for Impact',
+        'T1566.001': 'Phishing: Spearphishing Attachment',
+        'T1027': 'Obfuscated Files or Information',
+        'T1070.004': 'Indicator Removal: File Deletion',
+        'T1078': 'Valid Accounts',
+        'T1566': 'Phishing',
+        'T1059.003': 'Windows Command Shell',
+        'T1573': 'Encrypted Channel',
+        'T1021.001': 'Remote Desktop Protocol',
+        'T1055': 'Process Injection',
+        'T1569.002': 'System Services: Service Execution',
+        'T1003': 'OS Credential Dumping',
+        'T1056': 'Input Capture',
+        'T1071': 'Application Layer Protocol',
+        'T1490': 'Inhibit System Recovery',
+        'T1567': 'Exfiltration Over Web Service',
+        'T1583': 'Acquire Infrastructure',
+        'T1195': 'Supply Chain Compromise',
+        'T1059': 'Command and Scripting Interpreter',
+        'T1083': 'File and Directory Discovery',
+        'T1001': 'Data Obfuscation',
+        'T1014': 'Rootkit',
+        'T1190': 'Exploit Public-Facing Application',
+        'T1053': 'Scheduled Task/Job',
+        'T1070': 'Indicator Removal on Host',
+        'T1490': 'Inhibit System Recovery'
+    };
+    return techniques[techId] || 'Técnica MITRE ATT&CK';
+}
+
+function openMitreTechnique(techId) {
+    window.open(`https://attack.mitre.org/techniques/${techId}/`, '_blank');
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        // Feedback visual
+        const btn = event.target.closest('button');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+        setTimeout(() => btn.innerHTML = original, 1500);
+    });
+}
+
+function exportActors() {
+    const data = filteredActors.map(actor => ({
+        name: actor.name,
+        type: getActorType(actor),
+        country: actor.country,
+        status: actor.status,
+        description: actor.description,
+        first_seen: actor.first_seen,
+        last_seen: actor.last_seen,
+        aliases: actor.aliases,
+        target_industries: actor.target_industries,
+        mitre_techniques: actor.mitre_techniques
+    }));
+
+    const csv = [
+        ['Nombre', 'Tipo', 'País', 'Estado', 'Descripción', 'Primera vez visto', 'Última actividad', 'Aliases', 'Sectores', 'MITRE'],
+        ...data.map(a => [
+            a.name,
+            a.type,
+            a.country || 'Desconocido',
+            a.status,
+            a.description || '',
+            a.first_seen || '',
+            a.last_seen || '',
+            (a.aliases || []).join('; '),
+            (a.target_industries || []).join('; '),
+            (a.mitre_techniques || []).join('; ')
+        ])
+    ].map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `actores_amenaza_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+
+function showAddActor() {
+    alert('Formulario para reportar nuevo actor - Disponible en próxima actualización');
+}
+
+function showError(message) {
+    document.getElementById('actorsContainer').innerHTML = `
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+            <h5 class="text-danger">${message}</h5>
+            <button class="btn btn-primary mt-3" onclick="loadActors()">Reintentar</button>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

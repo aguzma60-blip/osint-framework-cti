@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+
+{% block title %}Análisis de Hash - OSINT Framework CTI{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">Inicio</a></li>
+<li class="breadcrumb-item active">Análisis de Hash</li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-8 mx-auto text-center">
+        <h2><i class="fas fa-fingerprint me-3" style="color: var(--warning-color);"></i>Análisis de Hash</h2>
+        <p class="text-muted">Análisis multi-engine de archivos y detección de malware</p>
+    </div>
+</div>
+
+<!-- Input Section -->
+<div class="row mb-5">
+    <div class="col-lg-8 mx-auto">
+        <div class="card border-warning" style="border-width: 2px;">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0"><i class="fas fa-search me-2"></i>Nuevo Análisis</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <label class="form-label text-muted">Introduce el hash (MD5, SHA1, SHA256)</label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-dark border-secondary">
+                            <i class="fas fa-hashtag text-warning"></i>
+                        </span>
+                        <input type="text" class="form-control search-box" id="hashInput"
+                               placeholder="Ej: d41d8cd98f00b204e9800998ecf8427e (MD5) o e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (SHA256)"
+                               onkeypress="if(event.key==='Enter') analyzeHash()">
+                        <button class="btn btn-warning btn-lg px-4" onclick="analyzeHash()" id="analyzeBtn">
+                            <i class="fas fa-search me-2"></i>Analizar
+                        </button>
+                    </div>
+                    <div class="form-text text-muted mt-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Soporta MD5 (32 chars), SHA1 (40 chars), SHA256 (64 chars)
+                    </div>
+                </div>
+
+                <!-- Drag & Drop Zone -->
+                <div class="border border-dashed rounded p-4 text-center"
+                     style="border-style: dashed !important; border-color: rgba(255,255,255,0.2) !important;"
+                     ondrop="dropHandler(event)" ondragover="dragOverHandler(event)" ondragleave="dragLeaveHandler(event)"
+                     id="dropZone">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-muted"></i>
+                    <p class="mb-0 text-muted">Arrastra un archivo aquí para calcular su hash</p>
+                    <small class="text-muted">o haz clic para seleccionar archivo</small>
+                    <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div class="row mb-4" id="loadingSection" style="display: none;">
+    <div class="col text-center">
+        <div class="spinner-custom mx-auto mb-3"></div>
+        <p class="text-muted">Analizando en múltiples motores...</p>
+        <div class="progress mt-3" style="height: 5px; max-width: 400px; margin: 0 auto;">
+            <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width: 0%" id="progressBar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<div class="row" id="resultsSection" style="display: none;">
+    <!-- Summary Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100 border-0" id="resultCard">
+            <div class="card-body text-center">
+                <div id="verdictIcon" class="mb-3">
+                    <i class="fas fa-check-circle fa-5x text-success"></i>
+                </div>
+                <h3 class="mb-2" id="verdictText">LIMPIO</h3>
+                <p class="text-muted mb-4" id="hashType">SHA256</p>
+
+                <div class="bg-dark rounded p-3 mb-3">
+                    <code class="text-break" id="hashValue" style="font-size: 0.9rem;">
+                        e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                    </code>
+                    <button class="btn btn-sm btn-outline-light mt-2" onclick="copyHash()">
+                        <i class="fas fa-copy me-1"></i>Copiar
+                    </button>
+                </div>
+
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="h4 mb-0" id="detectionRate">0/70</div>
+                        <small class="text-muted">Detecciones</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 mb-0" id="threatLevel">Bajo</div>
+                        <small class="text-muted">Nivel de Amenaza</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Engines Results -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-shield-virus me-2"></i>Resultados por Motor</h5>
+                <span class="badge bg-secondary" id="enginesCount">70 motores</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3" id="enginesGrid">
+                    <!-- Engines se cargan dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Details -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Detalles del Archivo</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Nombre</h6>
+                        <p id="fileName">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Tamaño</h6>
+                        <p id="fileSize">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Tipo MIME</h6>
+                        <p id="mimeType">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Primera vez visto</h6>
+                        <p id="firstSeen">-</p>
+                    </div>
+                </div>
+                <hr class="border-secondary">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">MD5</h6>
+                        <code class="text-info" id="md5Hash">-</code>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">SHA1</h6>
+                        <code class="text-info" id="sha1Hash">-</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Behavioral Analysis -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-microscope me-2"></i>Análisis de Comportamiento</h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="behavioralAnalysis">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-network-wired fa-2x me-3 text-info"></i>
+                            <div>
+                                <h6 class="mb-0">Actividad de Red</h6>
+                                <small class="text-muted">Sin conexiones sospechosas</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-edit fa-2x me-3 text-warning"></i>
+                            <div>
+                                <h6 class="mb-0">Modificaciones de Sistema</h6>
+                                <small class="text-muted">Sin modificaciones detectadas</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-key fa-2x me-3 text-success"></i>
+                            <div>
+                                <h6 class="mb-0">Persistencia</h6>
+                                <small class="text-muted">No se detectó persistencia</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historical Analysis -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Análisis Histórico</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="clearHistory()">
+                    <i class="fas fa-trash me-1"></i>Limpiar Historial
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark-custom">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Hash</th>
+                                <th>Tipo</th>
+                                <th>Resultado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTable">
+                            <!-- Historial dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample Hashes for Testing -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card bg-transparent border-secondary">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0"><i class="fas fa-vial me-2"></i>Hashes de Prueba</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">Haz clic en cualquier hash para analizarlo:</p>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark cursor-pointer" onclick="setHash('44d88612fea8a8f36de82e1278abb02f')" style="cursor: pointer;">
+                            <small class="text-muted d-block">EICAR Test File (MD5):</small>
+                            <code class="text-warning">44d88612fea8a8f36de82e1278abb02f</code>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark cursor-pointer" onclick="setHash('275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f')" style="cursor: pointer;">
+                            <small class="text-muted d-block">EICAR Test File (SHA256):</small>
+                            <code class="text-warning">275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Simulación de motores de análisis
+const engines = [
+    { name: 'VirusTotal', icon: 'fas fa-shield-alt' },
+    { name: 'Hybrid Analysis', icon: 'fas fa-microscope' },
+    { name: 'MetaDefender', icon: 'fas fa-layer-group' },
+    { name: 'MalwareBazaar', icon: 'fas fa-virus' },
+    { name: 'Abuse.ch', icon: 'fas fa-ban' },
+    { name: 'IBM X-Force', icon: 'fas fa-shield-virus' },
+    { name: 'AlienVault OTX', icon: 'fas fa-radar' },
+    { name: 'ThreatCrowd', icon: 'fas fa-crow' }
+];
+
+// Historial de análisis
+let analysisHistory = JSON.parse(localStorage.getItem('hashHistory') || '[]');
+
+function setHash(hash) {
+    document.getElementById('hashInput').value = hash;
+    analyzeHash();
+}
+
+function analyzeHash() {
+    const hash = document.getElementById('hashInput').value.trim();
+
+    if (!hash) {
+        alert('Por favor introduce un hash válido');
+        return;
+    }
+
+    if (!isValidHash(hash)) {
+        alert('Hash no válido. Debe ser MD5 (32), SHA1 (40) o SHA256 (64) caracteres hexadecimales');
+        return;
+    }
+
+    // Mostrar loading
+    document.getElementById('loadingSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('analyzeBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analizando...';
+
+    // Simular progreso
+    let progress = 0;
+    const progressBar = document.getElementById('progressBar');
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 100) progress = 100;
+        progressBar.style.width = progress + '%';
+
+        if (progress === 100) {
+            clearInterval(interval);
+            setTimeout(() => showResults(hash), 500);
+        }
+    }, 200);
+}
+
+function isValidHash(hash) {
+    const hexRegex = /^[a-fA-F0-9]+$/;
+    return hexRegex.test(hash) && (hash.length === 32 || hash.length === 40 || hash.length === 64);
+}
+
+function showResults(hash) {
+    // Ocultar loading, mostrar resultados
+    document.getElementById('loadingSection').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'block';
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('analyzeBtn').innerHTML = '<i class="fas fa-search me-2"></i>Analizar';
+
+    // Determinar tipo de hash
+    const hashType = hash.length === 32 ? 'MD5' : hash.length === 40 ? 'SHA1' : 'SHA256';
+    document.getElementById('hashType').textContent = hashType;
+    document.getElementById('hashValue').textContent = hash;
+
+    // Simular resultado (aleatorio para demo)
+    const isMalicious = Math.random() > 0.7; // 30% chance de malicioso
+    const detections = isMalicious ? Math.floor(Math.random() * 30) + 5 : Math.floor(Math.random() * 3);
+
+    // Actualizar veredicto visual
+    const verdictIcon = document.getElementById('verdictIcon');
+    const verdictText = document.getElementById('verdictText');
+    const resultCard = document.getElementById('resultCard');
+
+    if (isMalicious) {
+        verdictIcon.innerHTML = '<i class="fas fa-exclamation-triangle fa-5x text-danger"></i>';
+        verdictText.textContent = 'MALICIOSO';
+        verdictText.className = 'mb-2 text-danger';
+        resultCard.className = 'card h-100 border-danger';
+        document.getElementById('threatLevel').textContent = 'Alto';
+        document.getElementById('threatLevel').className = 'h4 mb-0 text-danger';
+    } else {
+        verdictIcon.innerHTML = '<i class="fas fa-check-circle fa-5x text-success"></i>';
+        verdictText.textContent = 'LIMPIO';
+        verdictText.className = 'mb-2 text-success';
+        resultCard.className = 'card h-100 border-success';
+        document.getElementById('threatLevel').textContent = 'Bajo';
+        document.getElementById('threatLevel').className = 'h4 mb-0 text-success';
+    }
+
+    document.getElementById('detectionRate').textContent = `${detections}/70`;
+
+    // Generar resultados de motores
+    const enginesGrid = document.getElementById('enginesGrid');
+    enginesGrid.innerHTML = engines.map(engine => {
+        const detected = Math.random() < (detections / 70);
+        return `
+            <div class="col-md-6 col-lg-3">
+                <div class="p-3 rounded ${detected ? 'bg-danger bg-opacity-25 border border-danger' : 'bg-success bg-opacity-25 border border-success'}">
+                    <div class="d-flex align-items-center">
+                        <i class="${engine.icon} me-2 ${detected ? 'text-danger' : 'text-success'}"></i>
+                        <div>
+                            <small class="d-block fw-bold">${engine.name}</small>
+                            <small class="${detected ? 'text-danger' : 'text-success'}">
+                                ${detected ? 'Detectado' : 'Limpio'}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Simular detalles de archivo
+    document.getElementById('fileName').textContent = isMalicious ? 'suspicious_file.exe' : 'document.pdf';
+    document.getElementById('fileSize').textContent = (Math.random() * 10 + 1).toFixed(2) + ' MB';
+    document.getElementById('mimeType').textContent = isMalicious ? 'application/x-msdownload' : 'application/pdf';
+    document.getElementById('firstSeen').textContent = new Date(Date.now() - Math.random() * 31536000000).toLocaleDateString();
+
+    // Generar hashes relacionados
+    document.getElementById('md5Hash').textContent = hash.length === 32 ? hash : generateRandomHash(32);
+    document.getElementById('sha1Hash').textContent = hash.length === 40 ? hash : generateRandomHash(40);
+
+    // Guardar en historial
+    saveToHistory(hash, hashType, isMalicious ? 'Malicioso' : 'Limpio');
+    renderHistory();
+
+    // Scroll a resultados
+    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function generateRandomHash(length) {
+    const chars = '0123456789abcdef';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return result;
+}
+
+function saveToHistory(hash, type, result) {
+    const entry = {
+        date: new Date().toISOString(),
+        hash: hash,
+        type: type,
+        result: result
+    };
+    analysisHistory.unshift(entry);
+    if (analysisHistory.length > 20) analysisHistory.pop(); // Mantener últimos 20
+    localStorage.setItem('hashHistory', JSON.stringify(analysisHistory));
+}
+
+function renderHistory() {
+    const tbody = document.getElementById('historyTable');
+    tbody.innerHTML = analysisHistory.map(item => `
+        <tr>
+            <td>${new Date(item.date).toLocaleString()}</td>
+            <td><code class="text-info">${item.hash.substring(0, 20)}...</code></td>
+            <td><span class="badge bg-secondary">${item.type}</span></td>
+            <td>
+                <span class="badge bg-${item.result === 'Malicioso' ? 'danger' : 'success'}">
+                    ${item.result}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-info" onclick="setHash('${item.hash}')">
+                    <i class="fas fa-redo"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="copyText('${item.hash}')">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function clearHistory() {
+    if (confirm('¿Eliminar todo el historial de análisis?')) {
+        analysisHistory = [];
+        localStorage.removeItem('hashHistory');
+        renderHistory();
+    }
+}
+
+function copyHash() {
+    const hash = document.getElementById('hashValue').textContent.trim();
+    copyText(hash);
+}
+
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        // Mostrar toast o alert temporal
+        const btn = event.target.closest('button');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => btn.innerHTML = original, 1000);
+    });
+}
+
+// Drag & Drop handlers
+function dragOverHandler(ev) {
+    ev.preventDefault();
+    document.getElementById('dropZone').classList.add('border-warning');
+    document.getElementById('dropZone').style.backgroundColor = 'rgba(255,193,7,0.1)';
+}
+
+function dragLeaveHandler(ev) {
+    document.getElementById('dropZone').classList.remove('border-warning');
+    document.getElementById('dropZone').style.backgroundColor = '';
+}
+
+function dropHandler(ev) {
+    ev.preventDefault();
+    document.getElementById('dropZone').classList.remove('border-warning');
+    document.getElementById('dropZone').style.backgroundColor = '';
+
+    if (ev.dataTransfer.items) {
+        const file = ev.dataTransfer.items[0].getAsFile();
+        processFile(file);
+    }
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) processFile(file);
+}
+
+function processFile(file) {
+    // Simular cálculo de hash de archivo
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        // En producción, calcular hash real del archivo
+        const simulatedHash = generateRandomHash(64);
+        document.getElementById('hashInput').value = simulatedHash;
+        analyzeHash();
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// Cargar historial al iniciar
+document.addEventListener('DOMContentLoaded', renderHistory);
+</script>
+
+<style>
+.cursor-pointer {
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.cursor-pointer:hover {
+    background-color: rgba(255,255,255,0.1) !important;
+}
+</style>
+{% endblock %}

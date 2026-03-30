@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Búsqueda IOC - OSINT Framework</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-search"></i> OSINT Framework
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">Herramientas</a>
+                <a class="nav-link" href="/actors">Actores</a>
+                <a class="nav-link" href="/hash-analysis">Análisis Hash</a>
+                <a class="nav-link active" href="/ioc-search">Buscar IOC</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-tools fa-3x text-warning mb-3"></i>
+                        <h3>Búsqueda de IOCs - En Desarrollo</h3>
+                        <p class="lead">Esta funcionalidad estará disponible en la próxima actualización</p>
+                        <p>Mientras tanto, puedes usar las siguientes funcionalidades:</p>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <i class="fas fa-fingerprint fa-2x text-primary mb-3"></i>
+                                        <h5>Análisis de Hashes</h5>
+                                        <p>Analiza hashes MD5, SHA1, SHA256 con múltiples fuentes</p>
+                                        <a href="/hash-analysis" class="btn btn-primary w-100">Analizar</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <i class="fas fa-user-secret fa-2x text-success mb-3"></i>
+                                        <h5>Actores de Amenazas</h5>
+                                        <p>Base de datos completa de grupos ransomware</p>
+                                        <a href="/actors" class="btn btn-success w-100">Explorar</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <i class="fas fa-shield-alt fa-2x text-info mb-3"></i>
+                                        <h5>Herramientas OSINT</h5>
+                                        <p>Catálogo de herramientas de inteligencia</p>
+                                        <a href="/" class="btn btn-info w-100">Ver Herramientas</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

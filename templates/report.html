@@ -1,0 +1,1175 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte CTI - OSINT Framework{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===== REPORTE CTI - ESTILOS ===== */
+
+/* Barra de búsqueda del reporte */
+.report-search-card {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+
+/* Cabecera del reporte generado */
+.report-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+}
+
+.report-header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+}
+
+.report-header .report-id {
+    font-family: monospace;
+    font-size: 0.78rem;
+    opacity: 0.75;
+    letter-spacing: 1px;
+}
+
+.report-header .ioc-value {
+    font-family: monospace;
+    font-size: 1.1rem;
+    background: rgba(255,255,255,0.15);
+    padding: 6px 14px;
+    border-radius: 6px;
+    word-break: break-all;
+    display: inline-block;
+    margin-top: 6px;
+}
+
+/* TLP Badge */
+.tlp-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.tlp-amber { background: #fbbf24; color: #78350f; }
+.tlp-red   { background: #ef4444; color: white; }
+.tlp-green { background: #10b981; color: white; }
+.tlp-white { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+/* Veredicto banner */
+.verdict-section {
+    border-radius: 12px;
+    padding: 24px 28px;
+    border-left: 6px solid;
+}
+.verdict-malicious  { background: #fff5f5; border-color: #dc2626; }
+.verdict-suspicious { background: #fffbeb; border-color: #d97706; }
+.verdict-clean      { background: #f0fdf4; border-color: #16a34a; }
+.verdict-unknown    { background: #f8fafc; border-color: #94a3b8; }
+
+/* Score circular */
+.verdict-score {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    border: 5px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.score-malicious  { border-color: #dc2626; color: #dc2626; background: #fff5f5; }
+.score-suspicious { border-color: #d97706; color: #d97706; background: #fffbeb; }
+.score-clean      { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+.score-unknown    { border-color: #94a3b8; color: #64748b; background: #f8fafc; }
+
+/* Barra de confianza */
+.confidence-track {
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+.confidence-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 1s ease;
+}
+
+/* Secciones del reporte */
+.report-section {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
+
+.report-section .section-header {
+    background: linear-gradient(135deg, #f1f5f9, #e8edf5);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 14px 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-section .section-body {
+    padding: 20px;
+}
+
+/* Tabla de fuentes */
+.source-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+.source-table th {
+    background: #f1f5f9;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 2px solid #e2e8f0;
+}
+.source-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    vertical-align: top;
+}
+.source-table tr:last-child td { border-bottom: none; }
+.source-table tr:hover td { background: #f8fafc; }
+
+/* Findings */
+.finding-row {
+    border-left: 4px solid;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-radius: 0 8px 8px 0;
+    background: white;
+    border: 1px solid #f1f5f9;
+    border-left-width: 4px;
+}
+.finding-critical { border-left-color: #dc2626 !important; background: #fff5f5; }
+.finding-high     { border-left-color: #f97316 !important; background: #fff7ed; }
+.finding-medium   { border-left-color: #d97706 !important; background: #fffbeb; }
+.finding-info     { border-left-color: #0891b2 !important; background: #ecfeff; }
+
+.finding-severity {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 8px;
+}
+.sev-critical { background: #dc2626; color: white; }
+.sev-high     { background: #f97316; color: white; }
+.sev-medium   { background: #d97706; color: white; }
+.sev-info     { background: #0891b2; color: white; }
+
+/* Recomendaciones */
+.rec-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.rec-row:last-child { border-bottom: none; }
+.rec-priority {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+.rec-CRÍTICA { background: #dc2626; color: white; }
+.rec-ALTA    { background: #f97316; color: white; }
+.rec-MEDIA   { background: #d97706; color: white; }
+.rec-BAJA    { background: #64748b; color: white; }
+.rec-INFO    { background: #0891b2; color: white; }
+
+/* MITRE pills */
+.mitre-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    font-size: 0.82rem;
+    margin: 3px;
+    color: #1e40af;
+}
+.mitre-pill .tid {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+/* Detection bar */
+.det-bar {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+.det-fill { height: 100%; border-radius: 4px; }
+
+/* Stat pills en header */
+.stat-pill {
+    background: rgba(255,255,255,0.15);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Botones de acción del reporte */
+.btn-report-action {
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 8px 20px;
+    font-size: 0.88rem;
+    transition: all 0.25s;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-pdf  { background: linear-gradient(45deg, #dc2626, #ef4444); color: white; box-shadow: 0 4px 12px rgba(220,38,38,0.25); }
+.btn-json { background: linear-gradient(45deg, #0891b2, #06b6d4); color: white; box-shadow: 0 4px 12px rgba(8,145,178,0.25); }
+.btn-pdf:hover, .btn-json:hover { transform: translateY(-2px); color: white; }
+.btn-new  { background: linear-gradient(45deg, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
+.btn-new:hover { transform: translateY(-2px); color: white; }
+
+/* Tags */
+.tag-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    margin: 2px;
+}
+
+/* Loading */
+#loadingSection .spinner-border { width: 3rem; height: 3rem; }
+
+/* ===== ESTILOS DE IMPRESIÓN / PDF ===== */
+@media print {
+    body { background: white !important; color: #000 !important; font-size: 11pt; }
+
+    .navbar, .footer, .breadcrumb, #searchSection,
+    #loadingSection, #errorSection, .btn-report-action,
+    #actionButtons, .no-print { display: none !important; }
+
+    .report-header {
+        background: #1e3a8a !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color: white !important;
+        border-radius: 8px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+    }
+
+    .report-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        border: 1px solid #ccc !important;
+        margin-bottom: 14px;
+        box-shadow: none !important;
+    }
+
+    .section-header {
+        background: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .verdict-section {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .finding-row {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        break-inside: avoid;
+    }
+
+    .finding-critical, .finding-high, .finding-medium, .finding-info {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .sev-critical, .sev-high, .sev-medium, .sev-info,
+    .rec-CRÍTICA, .rec-ALTA, .rec-MEDIA, .rec-BAJA, .rec-INFO,
+    .tlp-amber, .tlp-red {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .mitre-pill {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border: 1px solid #bfdbfe !important;
+    }
+
+    .confidence-fill {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .source-table th {
+        background: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    #reportSection { display: block !important; }
+
+    .container { max-width: 100% !important; padding: 0 8px; }
+
+    @page {
+        margin: 1.5cm 1.8cm;
+        size: A4;
+    }
+
+    .page-break { page-break-before: always; }
+}
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/investigate">Investigar IOC</a></li>
+<li class="breadcrumb-item active">Reporte CTI</li>
+{% endblock %}
+
+{% block content %}
+
+<!-- ===== CABECERA DE PÁGINA ===== -->
+<div class="row mb-4 animate-fade-in no-print">
+    <div class="col-lg-9 mx-auto text-center">
+        <h2><i class="fas fa-file-alt me-3 text-primary"></i>Reporte de Inteligencia CTI</h2>
+        <p class="text-muted">Análisis estructurado multi-fuente para soporte en toma de decisiones</p>
+    </div>
+</div>
+
+<!-- ===== FORMULARIO DE BÚSQUEDA ===== -->
+<div class="row mb-4 no-print" id="searchSection">
+    <div class="col-lg-9 mx-auto">
+        <div class="report-search-card p-4">
+            <h5 class="mb-3"><i class="fas fa-crosshairs me-2 text-primary"></i>Generar Reporte para IOC</h5>
+            <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="fas fa-fingerprint text-primary"></i></span>
+                <input type="text" class="form-control" id="reportIocInput"
+                       placeholder="IP, dominio, hash MD5/SHA256, URL..."
+                       onkeypress="if(event.key==='Enter') generateReport()">
+                <button class="btn btn-primary px-4 fw-bold" onclick="generateReport()">
+                    <i class="fas fa-file-medical-alt me-2"></i>Generar Reporte
+                </button>
+            </div>
+            <small class="text-muted mt-2 d-block">
+                <i class="fas fa-info-circle me-1"></i>
+                Consulta en tiempo real a VirusTotal, AbuseIPDB y Shodan con sus API keys configuradas.
+                El reporte puede tardar 5-15 segundos.
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- ===== LOADING ===== -->
+<div class="row mb-4" id="loadingSection" style="display:none;">
+    <div class="col-lg-9 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <h5 class="text-muted mb-1">Generando reporte de inteligencia...</h5>
+                <p class="text-muted small mb-3">Consultando VirusTotal · AbuseIPDB · Shodan · MalwareBazaar</p>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <span class="badge bg-light text-primary border"><i class="fas fa-virus me-1"></i>VirusTotal</span>
+                    <span class="badge bg-light text-danger border"><i class="fas fa-bug me-1"></i>MalwareBazaar</span>
+                    <span class="badge bg-light text-warning border"><i class="fas fa-shield-alt me-1"></i>AbuseIPDB</span>
+                    <span class="badge bg-light text-info border"><i class="fas fa-server me-1"></i>Shodan</span>
+                </div>
+                <small class="text-muted mt-3 d-block">Tiempo: <span id="loadTimer">0</span>s</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ERROR ===== -->
+<div class="row mb-4" id="errorSection" style="display:none;">
+    <div class="col-lg-9 mx-auto">
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Error:</strong> <span id="errorMsg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- ===== REPORTE GENERADO ===== -->
+<div id="reportSection" style="display:none;">
+<div class="col-lg-9 mx-auto">
+
+    <!-- Cabecera del reporte -->
+    <div class="report-header mb-4 animate-fade-in">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-shield-alt fa-lg"></i>
+                    <span class="fw-bold fs-5">OSINT Framework CTI</span>
+                    <span class="tlp-badge tlp-amber ms-2">TLP:AMBER</span>
+                </div>
+                <div class="report-id mb-1" id="rptId">—</div>
+                <h3 class="mb-2 fw-bold">Reporte de Inteligencia sobre Indicador</h3>
+                <div class="ioc-value" id="rptIoc">—</div>
+            </div>
+            <div class="text-end">
+                <div class="stat-pill mb-2 d-inline-flex">
+                    <i class="fas fa-clock"></i>
+                    <span id="rptDate">—</span>
+                </div>
+                <br>
+                <div class="stat-pill mb-2 d-inline-flex">
+                    <i class="fas fa-tag"></i>
+                    <span id="rptType">—</span>
+                </div>
+                <br>
+                <div class="stat-pill d-inline-flex">
+                    <i class="fas fa-database"></i>
+                    <span id="rptSources">— fuentes consultadas</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="mt-4 d-flex gap-2 flex-wrap" id="actionButtons">
+            <button class="btn-report-action btn-pdf" onclick="downloadPDF()">
+                <i class="fas fa-file-pdf"></i> Descargar PDF
+            </button>
+            <button class="btn-report-action btn-json" onclick="downloadJSON()">
+                <i class="fas fa-file-code"></i> Descargar JSON
+            </button>
+            <button class="btn-report-action btn-new no-print" onclick="newReport()">
+                <i class="fas fa-plus"></i> Nuevo Reporte
+            </button>
+        </div>
+    </div>
+
+    <!-- 1. RESUMEN EJECUTIVO -->
+    <div class="report-section">
+        <div class="section-header">
+            <i class="fas fa-clipboard-check text-primary"></i>
+            1. Resumen Ejecutivo
+        </div>
+        <div class="section-body">
+            <div id="verdictSection" class="verdict-section verdict-unknown mb-4">
+                <div class="d-flex align-items-center gap-4 flex-wrap">
+                    <div id="verdictScore" class="verdict-score score-unknown">?</div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                            <h4 class="mb-0 fw-bold" id="verdictLabel">—</h4>
+                            <span id="verdictBadge" class="badge bg-secondary fs-6">DESCONOCIDO</span>
+                        </div>
+                        <p class="mb-2 text-muted" id="verdictSummary">—</p>
+                        <div class="confidence-track">
+                            <div class="confidence-fill" id="confidenceFill" style="width:0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">Confianza del análisis</small>
+                            <small class="fw-bold" id="confidenceText">0%</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tags -->
+            <div id="tagsSection" style="display:none;">
+                <small class="text-muted fw-bold text-uppercase d-block mb-2">Clasificación del indicador</small>
+                <div id="tagsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. HALLAZGOS CRÍTICOS -->
+    <div class="report-section" id="findingsSection" style="display:none;">
+        <div class="section-header">
+            <i class="fas fa-exclamation-triangle text-danger"></i>
+            2. Hallazgos Críticos
+            <span id="findingsBadge" class="badge bg-danger ms-auto">0</span>
+        </div>
+        <div class="section-body" id="findingsList"></div>
+    </div>
+
+    <!-- 3. INTELIGENCIA POR FUENTE -->
+    <div class="report-section">
+        <div class="section-header">
+            <i class="fas fa-database text-info"></i>
+            3. Inteligencia por Fuente
+        </div>
+        <div class="section-body p-0">
+            <table class="source-table">
+                <thead>
+                    <tr>
+                        <th style="width:130px">Fuente</th>
+                        <th style="width:100px">Estado</th>
+                        <th style="width:110px">Veredicto</th>
+                        <th>Datos Clave</th>
+                        <th style="width:80px">Enlace</th>
+                    </tr>
+                </thead>
+                <tbody id="sourcesTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. ANÁLISIS DETALLADO -->
+    <div class="report-section" id="detailSection">
+        <div class="section-header">
+            <i class="fas fa-search-plus text-primary"></i>
+            4. Análisis Detallado
+        </div>
+        <div class="section-body" id="detailBody"></div>
+    </div>
+
+    <!-- 5. CONTEXTO MITRE ATT&CK -->
+    <div class="report-section" id="mitreSection" style="display:none;">
+        <div class="section-header">
+            <i class="fas fa-project-diagram text-warning"></i>
+            5. Contexto MITRE ATT&CK
+        </div>
+        <div class="section-body">
+            <p class="text-muted small mb-3">
+                Técnicas y tácticas identificadas basadas en los indicadores y comportamientos observados.
+                Referencia: <a href="https://attack.mitre.org" target="_blank">attack.mitre.org</a>
+            </p>
+            <div id="mitrePills"></div>
+            <div id="mitreSources" class="mt-3"></div>
+        </div>
+    </div>
+
+    <!-- 6. RECOMENDACIONES -->
+    <div class="report-section">
+        <div class="section-header">
+            <i class="fas fa-tasks text-success"></i>
+            6. Recomendaciones para el Analista
+        </div>
+        <div class="section-body" id="recommendationsList"></div>
+    </div>
+
+    <!-- 7. METADATA DEL REPORTE -->
+    <div class="report-section">
+        <div class="section-header">
+            <i class="fas fa-info-circle text-secondary"></i>
+            7. Metadatos del Reporte
+        </div>
+        <div class="section-body">
+            <table class="source-table">
+                <tbody id="metadataTable"></tbody>
+            </table>
+            <div class="mt-3 p-3 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                <small class="text-muted">
+                    <i class="fas fa-exclamation-circle me-1 text-warning"></i>
+                    <strong>Aviso Legal:</strong> Este reporte es generado automáticamente con fines de inteligencia.
+                    La información proviene de fuentes públicas y servicios de terceros. OSINT Framework CTI no garantiza
+                    la exactitud absoluta de los datos. Las decisiones de seguridad deben ser validadas por analistas certificados.
+                    Clasificación: <strong>TLP:AMBER</strong> — Distribución limitada a la organización receptora.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie del reporte (solo en impresión) -->
+    <div class="text-center text-muted small mt-4" style="display:none;" id="printFooter">
+        <hr>
+        OSINT Framework CTI &mdash; Reporte generado automáticamente &mdash; TLP:AMBER
+    </div>
+
+</div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ===================== VARIABLES GLOBALES =====================
+let currentReportData = null;
+let timerInterval = null;
+let timerSecs = 0;
+
+const IOC_TYPE_LABELS = {
+    ipv4: 'Dirección IPv4', ipv6: 'Dirección IPv6',
+    md5: 'Hash MD5', sha1: 'Hash SHA1', sha256: 'Hash SHA256', sha512: 'Hash SHA512',
+    url: 'URL', domain: 'Dominio', ip: 'Dirección IP',
+};
+
+const VERDICT_MAP = {
+    malicious:  { cls:'verdict-malicious',  score:'score-malicious',  badge:'bg-danger',           fill:'bg-danger',  label:'⚠ MALICIOSO',   text:'MALICIOSO'   },
+    suspicious: { cls:'verdict-suspicious', score:'score-suspicious', badge:'bg-warning text-dark', fill:'bg-warning', label:'⚡ SOSPECHOSO', text:'SOSPECHOSO'  },
+    clean:      { cls:'verdict-clean',      score:'score-clean',      badge:'bg-success',           fill:'bg-success', label:'✓ LIMPIO',       text:'LIMPIO'      },
+    unknown:    { cls:'verdict-unknown',    score:'score-unknown',    badge:'bg-secondary',         fill:'bg-secondary',label:'? DESCONOCIDO', text:'DESCONOCIDO' },
+};
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', function() {
+    const iocParam = new URLSearchParams(window.location.search).get('ioc') || '{{ ioc }}';
+    if (iocParam && iocParam.trim()) {
+        document.getElementById('reportIocInput').value = iocParam.trim();
+        generateReport();
+    }
+});
+
+// ===================== GENERAR REPORTE =====================
+async function generateReport() {
+    const ioc = document.getElementById('reportIocInput').value.trim();
+    if (!ioc) { showError('Introduce un IOC para generar el reporte.'); return; }
+
+    hide('reportSection'); hide('errorSection');
+    show('loadingSection');
+
+    timerSecs = 0;
+    document.getElementById('loadTimer').textContent = '0';
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        timerSecs++;
+        document.getElementById('loadTimer').textContent = timerSecs;
+    }, 1000);
+
+    try {
+        const resp = await fetch('/api/report/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ioc })
+        });
+        clearInterval(timerInterval);
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || `Error HTTP ${resp.status}`);
+        }
+        const result = await resp.json();
+        if (!result.success) throw new Error(result.error || 'Error desconocido');
+
+        currentReportData = result.data;
+        renderReport(result.data);
+
+    } catch (err) {
+        clearInterval(timerInterval);
+        hide('loadingSection');
+        showError(err.message);
+    }
+}
+
+// ===================== RENDERIZAR REPORTE =====================
+function renderReport(data) {
+    hide('loadingSection');
+    const corr    = data.correlation || {};
+    const sources = data.sources || {};
+
+    // --- Cabecera ---
+    document.getElementById('rptId').textContent      = data.report_id || '—';
+    document.getElementById('rptIoc').textContent     = data.ioc || '—';
+    document.getElementById('rptDate').textContent    = data.generated_at || '—';
+    document.getElementById('rptType').textContent    = IOC_TYPE_LABELS[data.ioc_type] || data.ioc_type || '—';
+    document.getElementById('rptSources').textContent = `${corr.sources_consulted || 0} fuentes · ${corr.sources_found || 0} con datos`;
+
+    // Actualizar URL sin recargar
+    const newUrl = `/report?ioc=${encodeURIComponent(data.ioc)}`;
+    window.history.replaceState({}, '', newUrl);
+
+    // --- Veredicto ---
+    const verdict = corr.global_verdict || 'unknown';
+    const vm = VERDICT_MAP[verdict] || VERDICT_MAP.unknown;
+    const confidence = corr.confidence || 0;
+
+    document.getElementById('verdictSection').className = `verdict-section ${vm.cls} mb-4`;
+    document.getElementById('verdictScore').className   = `verdict-score ${vm.score}`;
+    document.getElementById('verdictScore').textContent = confidence + '%';
+    document.getElementById('verdictLabel').textContent = vm.label;
+    document.getElementById('verdictBadge').className   = `badge ${vm.badge} fs-6`;
+    document.getElementById('verdictBadge').textContent = vm.text;
+    document.getElementById('verdictSummary').textContent = corr.summary || '—';
+    document.getElementById('confidenceFill').className  = `confidence-fill ${vm.fill}`;
+    document.getElementById('confidenceFill').style.width = confidence + '%';
+    document.getElementById('confidenceText').textContent = confidence + '%';
+
+    // --- Tags ---
+    const tags = corr.tags || [];
+    if (tags.length) {
+        document.getElementById('tagsList').innerHTML = tags.map(t =>
+            `<span class="tag-chip">${esc(t)}</span>`).join('');
+        show('tagsSection');
+    }
+
+    // --- Hallazgos ---
+    renderFindings(corr.findings || []);
+
+    // --- Tabla de fuentes ---
+    renderSourcesTable(sources, data.ioc_type);
+
+    // --- Detalle por fuente ---
+    renderDetailSection(sources, data.ioc_type, data.ioc);
+
+    // --- MITRE ---
+    renderMitre(corr);
+
+    // --- Recomendaciones (generadas en cliente para no depender del servidor) ---
+    renderRecommendations(verdict, confidence);
+
+    // --- Metadata ---
+    renderMetadata(data, corr);
+
+    show('reportSection');
+    document.getElementById('reportSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ===== FINDINGS =====
+function renderFindings(findings) {
+    if (!findings.length) { hide('findingsSection'); return; }
+    document.getElementById('findingsBadge').textContent = findings.length;
+    const ICONS = { critical:'fa-skull-crossbones', high:'fa-radiation', medium:'fa-exclamation-triangle', info:'fa-info-circle' };
+    document.getElementById('findingsList').innerHTML = findings.map(f => {
+        const sev = f.severity || 'info';
+        return `<div class="finding-row finding-${sev}">
+            <div class="d-flex align-items-start gap-2">
+                <i class="fas ${ICONS[sev]||'fa-circle'} mt-1 text-${sev==='critical'?'danger':sev==='high'?'warning':sev==='medium'?'warning':'info'}"></i>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <span class="finding-severity sev-${sev}">${sev.toUpperCase()}</span>
+                        <span class="fw-bold">${esc(f.text || f.title || '')}</span>
+                        ${f.source ? `<span class="badge bg-light text-dark border">${esc(f.source)}</span>` : ''}
+                    </div>
+                    ${f.detail ? `<small class="text-muted">${esc(f.detail || f.description || '')}</small>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    show('findingsSection');
+}
+
+// ===== TABLA DE FUENTES =====
+function renderSourcesTable(sources, iocType) {
+    const order = ['virustotal', 'malwarebazaar', 'abuseipdb', 'shodan'];
+    const META = {
+        virustotal:    { name:'VirusTotal',    icon:'fa-virus',      color:'text-primary' },
+        malwarebazaar: { name:'MalwareBazaar', icon:'fa-bug',        color:'text-danger'  },
+        abuseipdb:     { name:'AbuseIPDB',     icon:'fa-shield-alt', color:'text-warning' },
+        shodan:        { name:'Shodan',        icon:'fa-server',     color:'text-info'    },
+    };
+
+    let html = '';
+    for (const key of order) {
+        const s = sources[key] || {};
+        const m = META[key];
+        const available = s.available !== false;
+        const found     = s.found !== false && available;
+
+        let statusBadge = available
+            ? (found ? '<span class="badge bg-success">Datos encontrados</span>'
+                     : '<span class="badge bg-secondary">Sin datos</span>')
+            : '<span class="badge bg-danger">No disponible</span>';
+
+        let verdictBadge = '—';
+        if (s.verdict === 'malicious')  verdictBadge = '<span class="badge bg-danger">Malicioso</span>';
+        else if (s.verdict === 'suspicious') verdictBadge = '<span class="badge bg-warning text-dark">Sospechoso</span>';
+        else if (s.verdict === 'clean') verdictBadge = '<span class="badge bg-success">Limpio</span>';
+        else if (!available)            verdictBadge = '<span class="text-muted small">N/A</span>';
+
+        let keyData = '<span class="text-muted small">—</span>';
+        if (key === 'virustotal' && found) {
+            const mal = s.malicious || 0;
+            const tot = (s.malicious||0)+(s.suspicious||0)+(s.undetected||0)+(s.harmless||0);
+            const pct = tot ? Math.round(mal/tot*100) : 0;
+            keyData = `<div><span class="fw-bold">${mal}/${tot}</span> motores detectan amenaza</div>
+                       <div class="det-bar mt-1" style="width:120px"><div class="det-fill ${mal>0?'bg-danger':'bg-success'}" style="width:${pct}%"></div></div>
+                       ${s.malware_family ? `<small class="text-danger">${esc(s.malware_family)}</small>` : ''}`;
+        } else if (key === 'malwarebazaar' && found) {
+            keyData = `<div>${s.file_type ? `Tipo: <strong>${esc(s.file_type)}</strong>` : ''}</div>
+                       ${s.signature ? `<small class="text-danger">Familia: ${esc(s.signature)}</small>` : ''}
+                       ${s.file_name ? `<small class="d-block text-truncate" style="max-width:200px">${esc(s.file_name)}</small>` : ''}`;
+        } else if (key === 'abuseipdb' && found) {
+            const score = s.abuse_score || 0;
+            keyData = `<div>Score abuso: <strong class="${score>=70?'text-danger':score>=30?'text-warning':'text-success'}">${score}%</strong></div>
+                       <div class="det-bar mt-1" style="width:120px"><div class="det-fill ${score>=70?'bg-danger':score>=30?'bg-warning':'bg-success'}" style="width:${score}%"></div></div>
+                       ${s.isp ? `<small class="text-muted">${esc(s.isp)}</small>` : ''}`;
+        } else if (key === 'shodan' && found) {
+            const ports = (s.ports||[]).length;
+            const vulns = (s.vulns||[]).length;
+            keyData = `<div><strong>${ports}</strong> puertos abiertos · <strong class="${vulns>0?'text-danger':''}">${vulns}</strong> CVEs</div>
+                       ${s.org ? `<small class="text-muted">${esc(s.org)}</small>` : ''}`;
+        } else if (!available && s.error) {
+            keyData = `<small class="text-danger">${esc(s.error)}</small>`;
+        } else if (!available) {
+            keyData = '<small class="text-muted">API key no configurada</small>';
+        }
+
+        const link = s.link
+            ? `<a href="${esc(s.link)}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-external-link-alt"></i></a>`
+            : '<span class="text-muted">—</span>';
+
+        html += `<tr>
+            <td><i class="fas ${m.icon} me-2 ${m.color}"></i><strong>${m.name}</strong></td>
+            <td>${statusBadge}</td>
+            <td>${verdictBadge}</td>
+            <td>${keyData}</td>
+            <td>${link}</td>
+        </tr>`;
+    }
+    document.getElementById('sourcesTable').innerHTML = html;
+}
+
+// ===== DETALLE POR FUENTE =====
+function renderDetailSection(sources, iocType, ioc) {
+    let html = '';
+    const vt = sources.virustotal || {};
+    if (vt.found) {
+        const engines = vt.engines_hit || [];
+        html += `<div class="mb-4">
+            <h6 class="fw-bold mb-3"><i class="fas fa-virus me-2 text-primary"></i>VirusTotal — Detalle de Análisis</h6>
+            ${vt.reputation !== undefined ? rowDetail('Reputación', `<span class="${vt.reputation<0?'text-danger fw-bold':'text-success fw-bold'}">${vt.reputation}</span>`) : ''}
+            ${vt.first_seen ? rowDetail('Primera detección', formatDate(vt.first_seen)) : ''}
+            ${vt.last_seen  ? rowDetail('Último análisis',  formatDate(vt.last_seen))  : ''}
+            ${vt.name       ? rowDetail('Nombre del archivo', `<code>${esc(vt.name)}</code>`) : ''}
+            ${vt.type       ? rowDetail('Tipo de archivo', esc(vt.type)) : ''}
+            ${vt.size       ? rowDetail('Tamaño', formatSize(vt.size)) : ''}
+            ${vt.country    ? rowDetail('País origen', esc(vt.country)) : ''}
+            ${vt.as_owner   ? rowDetail('AS Owner', esc(vt.as_owner)) : ''}
+            ${engines.length ? `<div class="mt-3">
+                <small class="fw-bold text-muted text-uppercase d-block mb-2">Motores antivirus que detectan (top ${engines.length})</small>
+                <div class="row g-1">
+                ${engines.slice(0,10).map(e => `
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between small p-2 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
+                            <span class="fw-bold">${esc(e.engine)}</span>
+                            <span class="text-danger">${esc(e.result || e.category)}</span>
+                        </div>
+                    </div>`).join('')}
+                </div>
+            </div>` : ''}
+        </div>`;
+    }
+
+    const ab = sources.abuseipdb || {};
+    if (ab.found) {
+        html += `<div class="mb-4">
+            <h6 class="fw-bold mb-3"><i class="fas fa-shield-alt me-2 text-warning"></i>AbuseIPDB — Historial de Abuso</h6>
+            ${rowDetail('Score de abuso', `<strong class="${ab.abuse_score>=70?'text-danger':ab.abuse_score>=30?'text-warning':'text-success'}">${ab.abuse_score}%</strong>`)}
+            ${rowDetail('Total de reportes', `<strong>${ab.total_reports || 0}</strong>`)}
+            ${rowDetail('Usuarios únicos que reportaron', ab.distinct_users || 0)}
+            ${ab.isp          ? rowDetail('ISP',         esc(ab.isp))         : ''}
+            ${ab.country      ? rowDetail('País',        esc(ab.country))      : ''}
+            ${ab.usage_type   ? rowDetail('Tipo de uso', esc(ab.usage_type))   : ''}
+            ${ab.domain       ? rowDetail('Dominio',     esc(ab.domain))       : ''}
+            ${ab.last_reported? rowDetail('Último reporte', esc(ab.last_reported)) : ''}
+            ${ab.is_tor       ? '<div class="mt-2"><span class="badge bg-dark">Nodo TOR</span></div>' : ''}
+            ${(ab.categories||[]).length ? `<div class="mt-2">${ab.categories.map(c=>`<span class="tag-chip">${esc(c)}</span>`).join('')}</div>` : ''}
+            ${(ab.recent_reports||[]).length ? `<div class="mt-3">
+                <small class="fw-bold text-muted text-uppercase d-block mb-2">Reportes recientes</small>
+                ${ab.recent_reports.slice(0,3).map(r => `
+                    <div class="p-2 mb-1 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;font-size:0.83rem">
+                        <span class="text-muted">${esc(r.reported_at||'')}</span>
+                        ${r.categories ? r.categories.map(c=>`<span class="badge bg-warning text-dark ms-1">${esc(c)}</span>`).join('') : ''}
+                        ${r.comment ? `<div class="text-muted mt-1" style="font-size:0.8rem">${esc(r.comment)}</div>` : ''}
+                    </div>`).join('')}
+            </div>` : ''}
+        </div>`;
+    }
+
+    const sh = sources.shodan || {};
+    if (sh.found) {
+        html += `<div class="mb-4">
+            <h6 class="fw-bold mb-3"><i class="fas fa-server me-2 text-info"></i>Shodan — Superficie de Ataque</h6>
+            ${sh.org          ? rowDetail('Organización', `<strong>${esc(sh.org)}</strong>`) : ''}
+            ${sh.isp          ? rowDetail('ISP',           esc(sh.isp))           : ''}
+            ${sh.country      ? rowDetail('País',          esc(sh.country))       : ''}
+            ${sh.city         ? rowDetail('Ciudad',        esc(sh.city))          : ''}
+            ${sh.asn          ? rowDetail('ASN',           `<code>${esc(sh.asn)}</code>`) : ''}
+            ${sh.os           ? rowDetail('Sistema Operativo', `<span class="badge bg-secondary">${esc(sh.os)}</span>`) : ''}
+            ${sh.last_update  ? rowDetail('Última actualización Shodan', esc(sh.last_update)) : ''}
+            ${(sh.ports||[]).length ? `<div class="mt-2">
+                <small class="fw-bold text-muted text-uppercase d-block mb-1">Puertos abiertos (${sh.total_ports})</small>
+                ${sh.ports.slice(0,20).map(p=>`<span class="badge bg-light text-dark border font-monospace me-1 mb-1">${p}</span>`).join('')}
+            </div>` : ''}
+            ${(sh.vulns||[]).length ? `<div class="mt-2">
+                <small class="fw-bold text-danger text-uppercase d-block mb-1">⚠ CVEs detectados (${sh.total_vulns})</small>
+                ${sh.vulns.map(v=>`<span class="badge bg-danger me-1 mb-1">${esc(v)}</span>`).join('')}
+            </div>` : ''}
+            ${(sh.services||[]).length ? `<div class="mt-3">
+                <small class="fw-bold text-muted text-uppercase d-block mb-2">Servicios expuestos</small>
+                ${sh.services.slice(0,5).map(s => `
+                    <div class="p-2 mb-1 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;font-size:0.83rem">
+                        <span class="badge bg-info text-dark me-2">${s.port}/${s.transport||'tcp'}</span>
+                        ${s.product ? `<strong>${esc(s.product)}</strong>` : ''}
+                        ${s.version ? `<span class="text-muted"> v${esc(s.version)}</span>` : ''}
+                        ${s.ssl ? '<span class="badge bg-success ms-1">SSL</span>' : ''}
+                    </div>`).join('')}
+            </div>` : ''}
+        </div>`;
+    }
+
+    const mb = sources.malwarebazaar || {};
+    if (mb.found) {
+        html += `<div class="mb-4">
+            <h6 class="fw-bold mb-3"><i class="fas fa-bug me-2 text-danger"></i>MalwareBazaar — Muestra de Malware Confirmada</h6>
+            ${mb.signature      ? rowDetail('Familia / Firma',  `<span class="badge bg-danger">${esc(mb.signature)}</span>`)     : ''}
+            ${mb.file_name      ? rowDetail('Nombre del archivo', `<code>${esc(mb.file_name)}</code>`)                          : ''}
+            ${mb.file_type      ? rowDetail('Tipo',             `<strong>${esc(mb.file_type)}</strong>`)                        : ''}
+            ${mb.mime_type      ? rowDetail('MIME type',        `<code>${esc(mb.mime_type)}</code>`)                            : ''}
+            ${mb.file_size      ? rowDetail('Tamaño',           formatSize(mb.file_size))                                      : ''}
+            ${mb.reporter       ? rowDetail('Reportado por',    esc(mb.reporter))                                               : ''}
+            ${mb.origin         ? rowDetail('País de origen',   esc(mb.origin))                                                 : ''}
+            ${mb.first_seen     ? rowDetail('Primera vez visto', esc(mb.first_seen))                                           : ''}
+            ${mb.delivery_method? rowDetail('Vector de entrega', esc(mb.delivery_method))                                      : ''}
+            ${(mb.tags||[]).length ? `<div class="mt-2">${mb.tags.map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
+        </div>`;
+    }
+
+    if (!html) {
+        html = '<p class="text-muted">No se obtuvieron detalles adicionales de las fuentes consultadas.</p>';
+    }
+    document.getElementById('detailBody').innerHTML = html;
+}
+
+// ===== MITRE ATT&CK =====
+function renderMitre(corr) {
+    const tags = corr.tags || [];
+    const findings = corr.findings || [];
+
+    // Mapa de tags a técnicas MITRE
+    const TAG_MAP = {
+        'ransomware':  {id:'T1486', name:'Data Encrypted for Impact'},
+        'trojan':      {id:'T1059', name:'Command and Scripting Interpreter'},
+        'stealer':     {id:'T1555', name:'Credentials from Password Stores'},
+        'backdoor':    {id:'T1071', name:'Application Layer Protocol'},
+        'downloader':  {id:'T1105', name:'Ingress Tool Transfer'},
+        'dropper':     {id:'T1027', name:'Obfuscated Files or Information'},
+        'botnet':      {id:'T1071', name:'Application Layer Protocol'},
+        'miner':       {id:'T1496', name:'Resource Hijacking'},
+        'rat':         {id:'T1021', name:'Remote Services'},
+        'exploit':     {id:'T1190', name:'Exploit Public-Facing Application'},
+        'phishing':    {id:'T1566', name:'Phishing'},
+        'bruteforce':  {id:'T1110', name:'Brute Force'},
+        'scan':        {id:'T1046', name:'Network Service Discovery'},
+        'ddos':        {id:'T1499', name:'Endpoint Denial of Service'},
+        'sql':         {id:'T1190', name:'Exploit Public-Facing Application'},
+        'spyware':     {id:'T1113', name:'Screen Capture'},
+    };
+
+    const found = {};
+    for (const tag of tags) {
+        const t = tag.toLowerCase();
+        for (const [kw, tech] of Object.entries(TAG_MAP)) {
+            if (t.includes(kw) && !found[tech.id]) {
+                found[tech.id] = { ...tech, source: `Tag: ${tag}` };
+            }
+        }
+    }
+    for (const f of findings) {
+        const text = (f.text||'').toLowerCase();
+        for (const [kw, tech] of Object.entries(TAG_MAP)) {
+            if (text.includes(kw) && !found[tech.id]) {
+                found[tech.id] = { ...tech, source: `Hallazgo: ${f.source||''}` };
+            }
+        }
+    }
+
+    const techniques = Object.values(found);
+    if (!techniques.length) { hide('mitreSection'); return; }
+
+    document.getElementById('mitrePills').innerHTML = techniques.map(t =>
+        `<a href="https://attack.mitre.org/techniques/${t.id}/" target="_blank" class="mitre-pill" title="${esc(t.source)}">
+            <span class="tid">${esc(t.id)}</span>
+            <span>${esc(t.name)}</span>
+            <i class="fas fa-external-link-alt" style="font-size:0.65rem;opacity:0.6"></i>
+        </a>`
+    ).join('');
+
+    document.getElementById('mitreSources').innerHTML =
+        `<small class="text-muted"><i class="fas fa-info-circle me-1"></i>
+        Marco de referencia: MITRE ATT&CK v14 · ${techniques.length} técnica(s) identificada(s)
+        · Haz clic en cada técnica para ver detalles en attack.mitre.org</small>`;
+
+    show('mitreSection');
+}
+
+// ===== RECOMENDACIONES =====
+function renderRecommendations(verdict, confidence) {
+    const recs = {
+        malicious: [
+            { p:'CRÍTICA', a:'Bloquear inmediatamente el indicador en firewall, proxy y soluciones EDR' },
+            { p:'CRÍTICA', a:'Aislar cualquier sistema que haya tenido contacto con este IOC' },
+            { p:'ALTA',    a:'Escalar al equipo de respuesta a incidentes (IR Team)' },
+            { p:'ALTA',    a:'Revisar logs de los últimos 30 días buscando conexiones previas' },
+            { p:'ALTA',    a:'Notificar a equipos de sistemas afectados y management' },
+            { p:'MEDIA',   a:'Añadir el IOC al SIEM como regla de alerta activa' },
+            { p:'MEDIA',   a:'Compartir el IOC con feeds de inteligencia de la organización' },
+            { p:'BAJA',    a:'Documentar el incidente y actualizar playbooks de respuesta' },
+        ],
+        suspicious: [
+            { p:'ALTA',  a:'Monitorizar activamente el indicador en todos los sistemas' },
+            { p:'ALTA',  a:'Revisar conexiones recientes con este IOC en logs de red y endpoint' },
+            { p:'MEDIA', a:'Considerar bloqueo preventivo según política de riesgo de la organización' },
+            { p:'MEDIA', a:'Solicitar análisis adicional a fuentes externas de inteligencia (OTX, MISP)' },
+            { p:'MEDIA', a:'Correlacionar con otros IOCs de incidentes activos' },
+            { p:'BAJA',  a:'Mantener en lista de observación durante mínimo 30 días' },
+        ],
+        clean: [
+            { p:'BAJA', a:'No se requiere acción inmediata — continuar monitorización estándar' },
+            { p:'BAJA', a:'Registrar consulta en la base de datos de inteligencia interna' },
+            { p:'INFO', a:'Considerar re-análisis periódico ya que el estado puede cambiar' },
+        ],
+        unknown: [
+            { p:'MEDIA', a:'Indicador desconocido — aplicar principio de mínima confianza (Zero Trust)' },
+            { p:'MEDIA', a:'Ampliar investigación con fuentes adicionales: OTX, MISP, Censys' },
+            { p:'MEDIA', a:'Contactar con el equipo de Threat Intelligence para validación manual' },
+            { p:'BAJA',  a:'Monitorizar el indicador durante 7 días antes de determinar estado final' },
+        ]
+    };
+
+    let list = recs[verdict] || recs.unknown;
+    if (confidence < 40 && verdict !== 'clean') {
+        list = [...list, { p:'MEDIA', a:`Confianza baja (${confidence}%) — validar con analista certificado antes de tomar acción` }];
+    }
+
+    document.getElementById('recommendationsList').innerHTML = list.map((r, i) =>
+        `<div class="rec-row">
+            <span class="rec-priority rec-${r.p}">${r.p}</span>
+            <span class="text-dark">${i+1}. ${esc(r.a)}</span>
+        </div>`
+    ).join('');
+}
+
+// ===== METADATA =====
+function renderMetadata(data, corr) {
+    const rows = [
+        ['ID del Reporte',          `<code>${esc(data.report_id)}</code>`],
+        ['Fecha de generación',     esc(data.generated_at)],
+        ['IOC analizado',           `<code>${esc(data.ioc)}</code>`],
+        ['Tipo de indicador',       esc(IOC_TYPE_LABELS[data.ioc_type] || data.ioc_type)],
+        ['Clasificación',           '<span class="tlp-badge tlp-amber">TLP:AMBER</span>'],
+        ['Fuentes consultadas',     `${corr.sources_consulted || 0} fuentes (VirusTotal, MalwareBazaar, AbuseIPDB, Shodan)`],
+        ['Fuentes con datos',       `${corr.sources_found || 0} de ${corr.sources_consulted || 0}`],
+        ['Tiempo de análisis',      `${data.elapsed}s`],
+        ['Generado por',            'OSINT Framework CTI — Automated Intelligence Engine v1.0'],
+        ['Framework MITRE',         'ATT&CK v14'],
+    ];
+    document.getElementById('metadataTable').innerHTML = rows.map(([k, v]) =>
+        `<tr><td class="fw-bold text-muted" style="width:220px">${k}</td><td>${v}</td></tr>`
+    ).join('');
+}
+
+// ===================== DESCARGAS =====================
+function downloadPDF() {
+    document.getElementById('printFooter').style.display = 'block';
+    window.print();
+    document.getElementById('printFooter').style.display = 'none';
+}
+
+async function downloadJSON() {
+    const ioc = currentReportData?.ioc;
+    if (!ioc) return;
+
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+
+    try {
+        const resp = await fetch('/api/report/json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ioc })
+        });
+        const blob = await resp.blob();
+        const fname = resp.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1]
+                      || `CTI_Report_${ioc.replace(/\./g,'_')}.json`;
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href = url; a.download = fname; a.click();
+        URL.revokeObjectURL(url);
+    } catch(e) {
+        alert('Error generando JSON: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-file-code"></i> Descargar JSON';
+    }
+}
+
+function newReport() {
+    hide('reportSection');
+    show('searchSection');
+    document.getElementById('reportIocInput').value = '';
+    document.getElementById('reportIocInput').focus();
+    window.history.replaceState({}, '', '/report');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===================== UTILIDADES =====================
+const show = id => { const e = document.getElementById(id); if (e) e.style.display = ''; };
+const hide = id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; };
+
+function showError(msg) {
+    hide('loadingSection');
+    document.getElementById('errorMsg').textContent = msg;
+    show('errorSection');
+}
+
+function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function rowDetail(label, value) {
+    return `<div class="d-flex justify-content-between align-items-start small mb-2 pb-1" style="border-bottom:1px solid #f1f5f9">
+        <span class="text-muted fw-bold" style="min-width:160px">${label}</span>
+        <span class="text-end">${value}</span>
+    </div>`;
+}
+
+function formatDate(ts) {
+    if (!ts) return '—';
+    if (typeof ts === 'number') return new Date(ts * 1000).toLocaleString('es-ES');
+    return String(ts).replace('T', ' ').slice(0, 19);
+}
+
+function formatSize(b) {
+    if (!b) return '—';
+    if (b < 1024)    return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+}
+</script>
+{% endblock %}
